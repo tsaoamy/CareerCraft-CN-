@@ -5,10 +5,7 @@ const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        "rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 shadow-sm",
-        className
-      )}
+      className={cn("apple-card", className)}
       {...props}
     />
   )
@@ -17,14 +14,18 @@ Card.displayName = "Card";
 
 const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 pb-3", className)} {...props} />
+    <div ref={ref} className={cn("p-6 md:p-8 pb-4", className)} {...props} />
   )
 );
 CardHeader.displayName = "CardHeader";
 
 const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-lg font-semibold", className)} {...props} />
+    <h3
+      ref={ref}
+      className={cn("text-[19px] font-semibold tracking-tight text-apple-text dark:text-apple-text", className)}
+      {...props}
+    />
   )
 );
 CardTitle.displayName = "CardTitle";
@@ -33,7 +34,7 @@ const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPara
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-sm text-slate-500 dark:text-slate-400", className)}
+      className={cn("text-[14px] text-apple-text-secondary mt-1", className)}
       {...props}
     />
   )
@@ -42,7 +43,7 @@ CardDescription.displayName = "CardDescription";
 
 const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+    <div ref={ref} className={cn("p-6 md:p-8 pt-0", className)} {...props} />
   )
 );
 CardContent.displayName = "CardContent";

@@ -7,32 +7,50 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", ...props }, ref) => {
+  ({ className, variant = "primary", size = "md", children, ...props }, ref) => {
     return (
       <button
         className={cn(
-          "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50 disabled:opacity-50 disabled:pointer-events-none",
+          // Apple-style base: pill shape, smooth transitions
+          "inline-flex items-center justify-center font-medium rounded-full",
+          "transition-all duration-250 ease-apple select-none",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue/50 focus-visible:ring-offset-2",
+          "active:scale-[0.97]",
+          "disabled:opacity-40 disabled:pointer-events-none",
+          // Size variants
           {
-            "bg-primary-500 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/20 hover:shadow-primary-500/30":
+            "h-9 px-4 text-[13px] gap-1.5": size === "sm",
+            "h-11 px-6 text-[15px] gap-2": size === "md",
+            "h-[52px] px-8 text-[17px] gap-2.5": size === "lg",
+          },
+          // Style variants
+          {
+            "bg-apple-blue text-white hover:bg-[#0077ed] shadow-[0_2px_8px_rgba(0,113,227,0.3)] hover:shadow-[0_4px_16px_rgba(0,113,227,0.35)]":
               variant === "primary",
-            "bg-accent-500 text-white hover:bg-accent-600 shadow-lg shadow-accent-500/20":
-              variant === "secondary",
-            "border-2 border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950":
-              variant === "outline",
-            "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800":
-              variant === "ghost",
-            "bg-red-500 text-white hover:bg-red-600": variant === "destructive",
           },
           {
-            "px-3 py-1.5 text-sm": size === "sm",
-            "px-5 py-2.5 text-sm": size === "md",
-            "px-7 py-3 text-base": size === "lg",
+            "bg-[#e8e8ed] dark:bg-[#2c2c2e] text-apple-text dark:text-apple-text hover:bg-[#e0e0e5] dark:hover:bg-[#3a3a3c]":
+              variant === "secondary",
+          },
+          {
+            "bg-transparent border border-[#d2d2d7] dark:border-[#48484a] text-apple-text dark:text-apple-text hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e]":
+              variant === "outline",
+          },
+          {
+            "bg-transparent text-apple-text-secondary dark:text-apple-text-secondary hover:bg-[#f5f5f7] dark:hover:bg-[#2c2c2e]":
+              variant === "ghost",
+          },
+          {
+            "bg-apple-red text-white hover:bg-[#ff2d55] shadow-[0_2px_8px_rgba(255,55,95,0.3)]":
+              variant === "destructive",
           },
           className
         )}
         ref={ref}
         {...props}
-      />
+      >
+        {children}
+      </button>
     );
   }
 );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Search, FileText, FolderOpen } from 'lucide-react';
+import { Plus, Search, FolderOpen } from 'lucide-react';
 import { MaterialCard } from '@/components/materials/material-card';
 import { MaterialForm } from '@/components/materials/material-form';
 import { useMaterials } from '@/lib/material-context';
@@ -17,7 +17,6 @@ export default function MaterialsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editMaterial, setEditMaterial] = useState<Material | null>(null);
 
-  // Filter materials
   const filtered = useMemo(() => {
     let result = activeCategory === 'all' ? materials : getMaterialsByCategory(activeCategory);
     if (search.trim()) {
@@ -33,7 +32,6 @@ export default function MaterialsPage() {
     return result;
   }, [materials, activeCategory, search, getMaterialsByCategory]);
 
-  // Category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: materials.length };
     for (const cat of ALL_CATEGORIES) {
@@ -53,42 +51,44 @@ export default function MaterialsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-5 py-10 md:py-14 animate-fade-in-up">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
+          <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight text-apple-text dark:text-white">
             职业素材库
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-[15px] text-apple-text-secondary mt-1.5">
             一次录入经历，AI 自动拆解为 STAR 格式，多岗位智能适配
           </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm shadow-lg shadow-primary/25"
+          className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-apple-blue text-white text-[14px] font-medium hover:bg-[#0077ed] shadow-[0_2px_8px_rgba(0,113,227,0.3)] transition-all duration-200 active:scale-[0.97]"
         >
           <Plus className="w-4 h-4" />
           新建经历
         </button>
       </div>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+      {/* Category Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6">
         {ALL_CATEGORIES.map(cat => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-sm ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-medium transition-all duration-200 ${
               activeCategory === cat
-                ? 'border-primary bg-primary/10 text-primary font-medium shadow-sm'
-                : 'border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                ? 'bg-apple-blue text-white shadow-[0_2px_8px_rgba(0,113,227,0.3)]'
+                : 'bg-[#f5f5f7] dark:bg-[#2c2c2e] text-apple-text-secondary hover:text-apple-text dark:hover:text-white hover:bg-[#e8e8ed] dark:hover:bg-[#3a3a3c]'
             }`}
           >
-            <span className="text-base">{cat === 'all' ? '📂' : CATEGORY_ICONS[cat]}</span>
-            <span className="truncate">{cat === 'all' ? '全部' : CATEGORY_LABELS[cat]}</span>
-            <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${
-              activeCategory === cat ? 'bg-primary/20' : 'bg-secondary'
+            <span>{cat === 'all' ? '📂' : CATEGORY_ICONS[cat]}</span>
+            <span>{cat === 'all' ? '全部' : CATEGORY_LABELS[cat]}</span>
+            <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+              activeCategory === cat
+                ? 'bg-white/20 text-white'
+                : 'bg-[#e8e8ed] dark:bg-[#3a3a3c] text-apple-text-secondary'
             }`}>
               {categoryCounts[cat] ?? 0}
             </span>
@@ -97,14 +97,14 @@ export default function MaterialsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="relative mb-8">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-apple-text-secondary" />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="搜索经历标题、内容、标签或技能..."
-          className="w-full max-w-md pl-10 pr-4 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors text-sm"
+          className="w-full max-w-md h-12 pl-11 pr-5 rounded-xl border border-[#d2d2d7] dark:border-[#48484a] bg-[#f5f5f7] dark:bg-[#1c1c1e] text-[14px] text-apple-text dark:text-white placeholder:text-apple-text-secondary focus:outline-none focus:ring-2 focus:ring-apple-blue/40 focus:border-apple-blue transition-colors"
         />
       </div>
 
@@ -116,18 +116,18 @@ export default function MaterialsPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+        <div className="text-center py-24">
+          <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-[#f5f5f7] dark:bg-[#2c2c2e] flex items-center justify-center">
             {search ? (
-              <Search className="w-10 h-10 text-primary/60" />
+              <Search className="w-10 h-10 text-apple-text-secondary/40" />
             ) : (
-              <FolderOpen className="w-10 h-10 text-primary/60" />
+              <FolderOpen className="w-10 h-10 text-apple-text-secondary/40" />
             )}
           </div>
-          <h3 className="text-lg font-semibold text-foreground mb-1">
+          <h3 className="text-[19px] font-semibold tracking-tight text-apple-text dark:text-white mb-2">
             {search ? '未找到匹配的经历' : '素材库还是空的'}
           </h3>
-          <p className="text-muted-foreground text-sm mb-5 max-w-sm mx-auto">
+          <p className="text-[14px] text-apple-text-secondary mb-6 max-w-sm mx-auto">
             {search
               ? '试试其他关键词或切换分类'
               : '点击「新建经历」添加你的第一段职业素材，AI 将自动帮你拆解为 STAR 格式'}
@@ -135,7 +135,7 @@ export default function MaterialsPage() {
           {!search && (
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-apple-blue text-white text-[14px] font-medium hover:bg-[#0077ed] shadow-[0_2px_8px_rgba(0,113,227,0.3)] transition-all duration-200 active:scale-[0.97]"
             >
               <Plus className="w-4 h-4" />
               新建经历
@@ -144,7 +144,6 @@ export default function MaterialsPage() {
         </div>
       )}
 
-      {/* Material Form Modal */}
       {showForm && (
         <MaterialForm material={editMaterial} onClose={handleCloseForm} />
       )}
