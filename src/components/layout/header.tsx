@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Moon, Sun, Menu, X } from "lucide-react";
+import { Moon, Sun, Menu, X, User, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -60,6 +61,7 @@ export function Header() {
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
           )}
+          <AuthButtons />
           <Button variant="ghost" size="sm" className="md:hidden w-9 h-9 p-0" onClick={() => setMobileOpen(!mobileOpen)}>
             {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </Button>
@@ -87,5 +89,34 @@ export function Header() {
         </nav>
       )}
     </header>
+  );
+}
+
+function AuthButtons() {
+  const { user, logout } = useAuth();
+
+  if (!user) {
+    return (
+      <div className="hidden md:flex items-center gap-1">
+        <Link href="/login" className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+          登录
+        </Link>
+        <Link href="/register">
+          <Button size="sm" className="text-xs">注册</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="hidden md:flex items-center gap-2">
+      <Link href="/settings" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+        <User className="w-4 h-4" />
+        {user.username}
+      </Link>
+      <Button variant="ghost" size="sm" onClick={logout} className="w-9 h-9 p-0" title="退出登录">
+        <LogOut className="w-4 h-4" />
+      </Button>
+    </div>
   );
 }
