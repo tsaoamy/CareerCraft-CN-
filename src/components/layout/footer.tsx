@@ -9,16 +9,16 @@ const footerLinks = {
     { label: "AI 面试官", href: "/interview" },
   ],
   支持: [
-    { label: "帮助中心", href: "#" },
-    { label: "隐私政策", href: "#" },
-    { label: "服务条款", href: "#" },
-    { label: "联系我们", href: "#" },
+    { label: "帮助中心", href: "/help" },
+    { label: "隐私政策", href: "/privacy" },
+    { label: "服务条款", href: "/terms" },
+    { label: "联系我们", href: "/contact" },
   ],
   关于: [
-    { label: "关于我们", href: "#" },
-    { label: "博客", href: "#" },
-    { label: "更新日志", href: "#" },
-    { label: "加入我们", href: "#" },
+    { label: "关于我们", href: "/about" },
+    { label: "博客", href: "/blog" },
+    { label: "更新日志", href: "/changelog" },
+    { label: "加入我们", href: "/careers" },
   ],
 };
 
@@ -72,13 +72,13 @@ export function Footer() {
           </p>
           <div className="flex items-center gap-6">
             <Link
-              href="#"
+              href="/privacy"
               className="text-[12px] text-apple-text-secondary hover:text-apple-text dark:hover:text-white transition-colors"
             >
               隐私政策
             </Link>
             <Link
-              href="#"
+              href="/terms"
               className="text-[12px] text-apple-text-secondary hover:text-apple-text dark:hover:text-white transition-colors"
             >
               服务条款
