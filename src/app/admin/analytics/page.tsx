@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserPath, MousePointerClick, ArrowDown, TrendingDown } from 'lucide-react';
+import { Users, MousePointerClick, ArrowDown, TrendingDown } from 'lucide-react';
 import { TrendChart, PieChart } from '@/components/admin/charts';
 import { AdminSkeleton } from '@/components/admin/skeleton';
 import { adminDataService } from '@/lib/admin/data-service';
@@ -111,7 +111,7 @@ export default function AnalyticsPage() {
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-black/5 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-9 h-9 rounded-xl bg-[#5856d6]/10 flex items-center justify-center">
-              <UserPath className="w-5 h-5 text-[#5856d6]" />
+              <Users className="w-5 h-5 text-[#5856d6]" />
             </div>
             <div>
               <h3 className="text-base font-semibold text-[#1d1d1f]">用户访问路径</h3>

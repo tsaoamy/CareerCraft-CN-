@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AdminSidebar } from '@/components/admin/sidebar';
+import { AdminAuthProvider } from '@/lib/admin/admin-auth-context';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -23,15 +24,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname, isLoginPage, router]);
 
   if (isLoginPage) {
-    return <>{children}</>;
+    return <AdminAuthProvider>{children}</AdminAuthProvider>;
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] flex">
-      <AdminSidebar />
-      <main className="flex-1 ml-64 min-h-screen overflow-x-hidden">
-        <div className="p-8 pt-6">{children}</div>
-      </main>
-    </div>
+    <AdminAuthProvider>
+      <div className="min-h-screen bg-[#f5f5f7] flex">
+        <AdminSidebar />
+        <main className="flex-1 ml-64 min-h-screen overflow-x-hidden">
+          <div className="p-8 pt-6">{children}</div>
+        </main>
+      </div>
+    </AdminAuthProvider>
   );
 }

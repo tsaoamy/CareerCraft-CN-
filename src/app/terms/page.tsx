@@ -18,7 +18,7 @@ export default function TermsPage() {
           <div>
             <h2 className="text-[19px] font-semibold text-apple-text dark:text-white mb-4">1. 服务概述</h2>
             <p className="mb-3">
-              CareerCraft（以下简称"本服务"）是一款 AI 驱动的职业档案管理与简历智能适配平台。通过本服务，您可以录入个人经历与技能信息，由 AI 自动分析并为不同岗位生成专属优化的简历内容。
+              CareerCraft（以下简称「本服务」）是一款 AI 驱动的职业档案管理与简历智能适配平台。通过本服务，您可以录入个人经历与技能信息，由 AI 自动分析并为不同岗位生成专属优化的简历内容。
             </p>
             <p>
               使用本服务即表示您同意本条款。如您不同意，请停止使用。
@@ -79,7 +79,7 @@ export default function TermsPage() {
           <div>
             <h2 className="text-[19px] font-semibold text-apple-text dark:text-white mb-4">7. 责任限制</h2>
             <ul className="list-disc list-inside space-y-2">
-              <li>本服务按"现状"提供，我们不对服务的可用性、准确性、及时性做出绝对保证。</li>
+              <li>本服务按「现状」提供，我们不对服务的可用性、准确性、及时性做出绝对保证。</li>
               <li>我们不对因使用本服务导致的间接损失（包括但不限于机会损失、数据丢失等）承担责任。</li>
               <li>因不可抗力（如自然灾害、网络攻击、第三方服务故障等）导致的服务中断，我们不承担责任。</li>
               <li>在任何情况下，我们的赔偿总额不超过您在过去 12 个月内为使用本服务支付的费用。</li>

@@ -16,34 +16,38 @@ import {
   LogOut,
   ChevronLeft,
   Sparkles,
+  Code2,
+  TrendingUp,
+  Building2,
+  PieChart,
 } from "lucide-react";
 import { useAdminAuth } from "@/lib/admin/admin-auth-context";
 
 const navItems = [
   {
-    label: "数据总览",
-    href: "/admin/dashboard",
-    icon: LayoutDashboard,
+    section: "核心管理",
+    items: [
+      { label: "数据总览", href: "/admin/dashboard", icon: LayoutDashboard },
+      { label: "驾驶舱", href: "/admin/dashboard-enhanced", icon: PieChart },
+      { label: "用户管理", href: "/admin/users", icon: Users },
+      { label: "简历中心", href: "/admin/resumes", icon: FileText },
+    ],
   },
   {
-    label: "用户管理",
-    href: "/admin/users",
-    icon: Users,
+    section: "AI & 分析",
+    items: [
+      { label: "Prompt管理", href: "/admin/prompts", icon: Code2 },
+      { label: "AI 监控", href: "/admin/ai-monitor", icon: Activity },
+      { label: "行为分析", href: "/admin/analytics", icon: BarChart3 },
+    ],
   },
   {
-    label: "简历中心",
-    href: "/admin/resumes",
-    icon: FileText,
-  },
-  {
-    label: "AI 监控",
-    href: "/admin/ai-monitor",
-    icon: Activity,
-  },
-  {
-    label: "行为分析",
-    href: "/admin/analytics",
-    icon: BarChart3,
+    section: "扩展功能",
+    items: [
+      { label: "人才画像", href: "/talent", icon: TrendingUp },
+      { label: "职位匹配", href: "/talent/matching", icon: BarChart3 },
+      { label: "企业版", href: "/enterprise", icon: Building2 },
+    ],
   },
 ];
 
@@ -66,31 +70,40 @@ export function AdminSidebar() {
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-sm font-medium transition-all duration-200 group ${
-                isActive
-                  ? "bg-white dark:bg-[#2c2c2e] text-[#0071e3] shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                  : "text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7] hover:bg-white/50 dark:hover:bg-[#2c2c2e]/50"
-              }`}
-            >
-              <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-              <span>{item.label}</span>
-              {isActive && (
-                <motion.div
-                  layoutId="sidebar-active"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#0071e3] rounded-full"
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              )}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        {navItems.map((section) => (
+          <div key={section.section}>
+            <div className="px-3 py-1 text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
+              {section.section}
+            </div>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-sm font-medium transition-all duration-200 group ${
+                      isActive
+                        ? "bg-white dark:bg-[#2c2c2e] text-[#0071e3] shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                        : "text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7] hover:bg-white/50 dark:hover:bg-[#2c2c2e]/50"
+                    }`}
+                  >
+                    <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <motion.div
+                        layoutId="sidebar-active"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#0071e3] rounded-full"
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User + Logout */}

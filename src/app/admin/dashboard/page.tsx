@@ -108,7 +108,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="平均停留"
-          value={`${stats?.avgDuration ?? 0}`}
+          value={Number(stats?.avgDuration ?? 0)}
           suffix="分钟"
           change={-1.5}
           icon={<Clock className="w-5 h-5" />}

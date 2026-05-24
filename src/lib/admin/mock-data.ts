@@ -67,11 +67,11 @@ export function getDashboardStats(): DashboardStats {
   return {
     totalUsers: 128,
     newUsersToday: rand(3, 15),
-    pageViews: totalAnalyses * 3 + rand(500, 2000),
-    uniqueVisitors: rand(800, 1200),
-    resumeGenerated: totalResumes,
+    totalPV: totalAnalyses * 3 + rand(500, 2000),
+    totalUV: rand(800, 1200),
+    resumesGenerated: totalResumes,
     aiAnalysisCount: totalAnalyses,
-    avgSessionDuration: rand(180, 420),
+    avgDuration: rand(3, 7),
     conversionRate: rand(12, 28),
   };
 }
@@ -151,18 +151,12 @@ export function getResumeRecords(
     const user = pick(mockUsers);
     return {
       id: `resume-${String(i + 1).padStart(4, "0")}`,
-      userId: user.id,
+      fileName: `resume_v${rand(1, 5)}.pdf`,
       userName: user.name,
-      userEmail: user.email,
-      originalFileName: `resume_v${rand(1, 5)}.pdf`,
-      optimizedVersion: rand(1, 8),
+      type: (i % 2 === 0 ? 'original' : 'optimized') as 'original' | 'optimized',
       score: rand(55, 98),
-      aiAnalysisCount: rand(1, 10),
-      lastModifiedAt: new Date(
+      generatedAt: new Date(
         Date.now() - rand(0, 60) * 24 * 60 * 60 * 1000
-      ).toISOString(),
-      createdAt: new Date(
-        Date.now() - rand(30, 365) * 24 * 60 * 60 * 1000
       ).toISOString(),
     };
   });
@@ -173,8 +167,7 @@ export function getResumeRecords(
     records = records.filter(
       (r) =>
         r.userName.toLowerCase().includes(s) ||
-        r.userEmail.toLowerCase().includes(s) ||
-        r.originalFileName.toLowerCase().includes(s)
+        r.fileName.toLowerCase().includes(s)
     );
   }
 
