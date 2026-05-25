@@ -20,6 +20,9 @@ import {
   TrendingUp,
   Building2,
   PieChart,
+  Flame,
+  GitBranch,
+  BookOpen,
 } from "lucide-react";
 import { useAdminAuth } from "@/lib/admin/admin-auth-context";
 
@@ -39,6 +42,9 @@ const navItems = [
       { label: "Prompt管理", href: "/admin/prompts", icon: Code2 },
       { label: "AI 监控", href: "/admin/ai-monitor", icon: Activity },
       { label: "行为分析", href: "/admin/analytics", icon: BarChart3 },
+      { label: "AI 提问热力图", href: "/admin/ai-heatmap", icon: Flame },
+      { label: "用户成长轨迹", href: "/admin/user-growth", icon: GitBranch },
+      { label: "知识库推荐", href: "/admin/knowledge-base", icon: BookOpen },
     ],
   },
   {
