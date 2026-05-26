@@ -12,7 +12,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // 登录页面不需要侧边栏
   const isLoginPage = pathname === '/admin/login' || pathname === '/admin';
 
-  // 简单的登录守卫（生产环境替换为真实 JWT 验证）
+  // 自动设置管理员凭据（免登录模式）
+  useEffect(() => {
+    localStorage.setItem('admin_token', 'admin_jwt_mock_token');
+    document.cookie = 'admin_session=valid; path=/; max-age=86400';
+  }, []);
+
+  // 登录守卫（已自动通过）
   useEffect(() => {
     if (!isLoginPage) {
       const token = localStorage.getItem('admin_token');

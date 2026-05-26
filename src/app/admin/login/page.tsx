@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
     // 模拟管理员验证（生产环境替换为真实 API）
     await new Promise(r => setTimeout(r, 800));
 
-    if (email === '1759486723@qq.com' && password === 'admin123') {
+    if (email === '123456@qq.com' && password === '123456') {
       localStorage.setItem('admin_token', 'admin_jwt_mock_token');
       document.cookie = 'admin_session=valid; path=/; max-age=86400';
       router.push('/admin/dashboard');
@@ -70,7 +70,7 @@ export default function AdminLoginPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="1759486723@qq.com"
+                placeholder="123456@qq.com"
                 className="w-full h-12 px-4 rounded-xl border border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f] placeholder-[#aeaeb2] text-sm focus:outline-none focus:ring-2 focus:ring-[#0071e3]/30 focus:border-[#0071e3] transition-all duration-200"
                 required
               />

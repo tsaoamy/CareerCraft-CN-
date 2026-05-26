@@ -283,9 +283,9 @@ CREATE TABLE IF NOT EXISTS enterprise_resume_results (
 -- 初始数据
 -- =====================================================
 
--- 创建默认管理员 (密码: admin123)
+-- 创建默认管理员 (密码: 123456)
 INSERT OR IGNORE INTO users (id, username, email, password_hash, nickname, role, status)
-VALUES ('admin-001', 'admin', 'admin@careercraft.cn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '系统管理员', 'super_admin', 'active');
+VALUES ('admin-001', '123456@qq.com', '123456@qq.com', '$2b$10$sBfYfI3vujMfraTWZjO7fOzOyhRE7eXh8C0yPK76XeIrCKwBcn7T2', '系统管理员', 'super_admin', 'active');
 
 -- 创建默认 Prompt 模板
 INSERT OR IGNORE INTO prompt_templates (id, name, category, model_type, current_version, system_prompt, user_prompt_template, variables, is_active)

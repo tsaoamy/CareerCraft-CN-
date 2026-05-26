@@ -24,7 +24,7 @@ interface AdminAuthContextType extends AdminAuthState {
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
 const ADMIN_SESSION_KEY = "careercraft_admin_session";
-const ADMIN_PASSWORD = "careercraft2025"; // 生产环境使用 JWT + bcrypt
+const ADMIN_PASSWORD = "123456"; // 生产环境使用 JWT + bcrypt
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AdminAuthState>({
