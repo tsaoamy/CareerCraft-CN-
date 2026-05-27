@@ -123,6 +123,7 @@ export function Header() {
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-apple-text-secondary hover:text-apple-text dark:hover:text-white hover:bg-[#e8e8ed] dark:hover:bg-[#2c2c2e] transition-all duration-200"
                 aria-label="切换主题"
+                suppressHydrationWarning
               >
                 {theme === "dark" ? (
                   <Sun className="w-[17px] h-[17px]" />

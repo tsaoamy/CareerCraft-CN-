@@ -76,8 +76,11 @@ function loadMaterials(): Material[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-    // First visit: seed demo data
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    // First visit or corrupted data: seed demo data
     saveMaterials(DEMO_MATERIALS);
     return DEMO_MATERIALS;
   } catch {
@@ -89,7 +92,7 @@ function saveMaterials(materials: Material[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
-  } catch { /* storage full - silently fail */ }
+  } catch { /* storage full or unavailable - silently fail */ }
 }
 
 export function MaterialProvider({ children }: { children: ReactNode }) {

@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className="min-h-screen flex flex-col antialiased bg-[var(--apple-bg)] text-[var(--apple-text)]">
+      <body className="min-h-screen flex flex-col antialiased bg-[var(--apple-bg)] text-[var(--apple-text)] starry-overlay">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

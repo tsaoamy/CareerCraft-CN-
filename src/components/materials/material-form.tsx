@@ -11,9 +11,10 @@ const CATEGORIES: MaterialCategory[] = ['internship', 'project', 'competition', 
 interface MaterialFormProps {
   material?: Material | null;
   onClose: () => void;
+  seedContent?: string | null;
 }
 
-export function MaterialForm({ material, onClose }: MaterialFormProps) {
+export function MaterialForm({ material, onClose, seedContent }: MaterialFormProps) {
   const { addMaterial, updateMaterial } = useMaterials();
   const isEdit = !!material;
 
@@ -42,8 +43,10 @@ export function MaterialForm({ material, onClose }: MaterialFormProps) {
         skills: material.skills,
         highlights: material.highlights,
       });
+    } else if (seedContent) {
+      setForm(f => ({ ...f, rawContent: seedContent }));
     }
-  }, [material]);
+  }, [material, seedContent]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

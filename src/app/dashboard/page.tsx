@@ -57,24 +57,59 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10 md:py-14">
-      {/* Header */}
-      <div className={`flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <div>
-          <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight text-apple-text dark:text-white">
-            工作台
-          </h1>
-          <p className="text-[15px] text-apple-text-secondary mt-1.5">
-            一个职业档案，多岗位智能适配
-          </p>
+      {/* Hero Banner — Starry Sky Theme */}
+      <div className={`relative mb-10 overflow-hidden rounded-3xl nebula-hero border border-white/10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        {/* Shooting stars */}
+        <div className="shooting-star" />
+        <div className="shooting-star" />
+        <div className="shooting-star" />
+        {/* Constellation dots */}
+        <div className="constellation-dot" style={{top:'8%',left:'12%'}} />
+        <div className="constellation-dot" style={{top:'15%',left:'28%'}} />
+        <div className="constellation-dot" style={{top:'10%',left:'42%'}} />
+        <div className="constellation-dot" style={{top:'18%',left:'55%'}} />
+        <div className="constellation-dot" style={{top:'75%',left:'18%'}} />
+        <div className="constellation-dot" style={{top:'82%',left:'72%'}} />
+        <div className="constellation-dot" style={{top:'70%',left:'85%'}} />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-center">
+          <div className="flex-1 p-8 md:p-12">
+            <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[12px] text-blue-200">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              星空导航 · AI求职中枢
+            </div>
+            <h1 className="text-[32px] md:text-[42px] font-bold tracking-tight text-white">
+              工作台
+            </h1>
+            <p className="text-[16px] text-blue-100/80 mt-2 mb-6 max-w-md leading-relaxed">
+              你的AI求职中枢 —— 录入经历，智能匹配岗位，一键生成简历
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/materials"
+                className="group inline-flex items-center gap-2 h-11 px-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-[14px] font-medium hover:from-blue-400 hover:to-purple-400 shadow-[0_2px_16px_rgba(100,80,255,0.35)] hover:shadow-[0_4px_24px_rgba(120,100,255,0.5)] transition-all duration-200 active:scale-[0.97]"
+              >
+                <Plus className="w-4 h-4" />
+                添加新经历
+                <ArrowRight className="w-4 h-4 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-200" />
+              </Link>
+              <Link
+                href="/jd-analyzer"
+                className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-[14px] font-medium text-white hover:bg-white/20 hover:border-white/25 transition-all duration-200"
+              >
+                <Search className="w-4 h-4" />
+                分析JD
+              </Link>
+            </div>
+          </div>
+          <div className="hidden md:block flex-shrink-0 p-4">
+            <img
+              src="/images/Career_journey_through_stars___2026-05-27T03-05-13.png"
+              alt="星途职业之旅"
+              className="w-64 h-auto rounded-2xl shadow-[0_0_40px_rgba(120,100,255,0.2)]"
+            />
+          </div>
         </div>
-        <Link
-          href="/materials"
-          className="group inline-flex items-center gap-2 h-11 px-6 rounded-full bg-apple-blue text-white text-[14px] font-medium hover:bg-[#0077ed] shadow-[0_2px_8px_rgba(0,113,227,0.3)] hover:shadow-[0_4px_16px_rgba(0,113,227,0.4)] transition-all duration-200 active:scale-[0.97]"
-        >
-          <Plus className="w-4 h-4" />
-          添加新经历
-          <ArrowRight className="w-4 h-4 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-200" />
-        </Link>
       </div>
 
       {isEmpty ? (
