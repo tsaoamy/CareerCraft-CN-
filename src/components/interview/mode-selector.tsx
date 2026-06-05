@@ -3,85 +3,143 @@
 import { cn } from "@/lib/utils";
 import type { InterviewQuickMode } from "@/types/interview";
 import { quickModes } from "@/data/interview-questions";
-
-// ==========================================
-// ModeSelector — 快捷模式选择器
-// ==========================================
+import { useLocale } from "@/lib/i18n/locale-context";
+import { tCategory, tJob, tQuickMode } from "@/lib/i18n/interview-labels";
+import {
+  ArrowRight,
+  BarChart3,
+  Bot,
+  Briefcase,
+  Code2,
+  Globe,
+  LayoutGrid,
+  MessageSquare,
+  Palette,
+  Target,
+  Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 interface ModeSelectorProps {
   selected: string | null;
+  jobTitle?: string;
   onSelect: (mode: InterviewQuickMode) => void;
   onCustom: () => void;
 }
 
-export function ModeSelector({ selected, onSelect, onCustom }: ModeSelectorProps) {
+const MODE_ICONS: Record<string, LucideIcon> = {
+  full: Target,
+  situational: MessageSquare,
+  behavior: Briefcase,
+  "technical-frontend": Code2,
+  "technical-backend": Code2,
+  product: LayoutGrid,
+  "data-analyst": BarChart3,
+  english: Globe,
+  pressure: Zap,
+  design: Palette,
+  custom: Palette,
+};
+
+export function ModeSelector({ selected, jobTitle, onSelect, onCustom }: ModeSelectorProps) {
+  const { locale, t } = useLocale();
+  const ip = t.interviewPage;
+
   return (
-    <div className="max-w-3xl mx-auto animate-fade-in-up">
+    <div className="max-w-4xl mx-auto animate-fade-in-up">
       <div className="text-center mb-10">
-        <h2 className="text-[28px] md:text-[34px] font-bold tracking-tight text-apple-text dark:text-white mb-3">
-          选择面试模式
+        <h2 className="text-[28px] md:text-[34px] font-bold tracking-tight text-ink mb-3">
+          {ip.selectModeTitle}
         </h2>
-        <p className="text-[15px] text-apple-text-secondary">
-          不同模式包含不同类型的面试题目，选择最适合你需求的
-        </p>
+        <p className="text-[15px] text-stone">{ip.selectModeSubtitle}</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {quickModes.map((mode) => (
-          <button
-            key={mode.id}
-            onClick={() => onSelect(mode)}
-            className={cn(
-              "text-left apple-card p-5 transition-all hover:shadow-md",
-              "border-2",
-              selected === mode.id
-                ? "border-apple-blue shadow-md"
-                : "border-transparent hover:border-apple-blue/30",
-            )}
-          >
-            <span className="text-[28px] mb-3 block">{mode.icon}</span>
-            <h3 className="text-[16px] font-semibold text-apple-text dark:text-white mb-2">
-              {mode.label}
-            </h3>
-            <p className="text-[12px] text-apple-text-secondary mb-3">
-              {mode.jobCategory} · {mode.questionCount} 题
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {mode.categories.map((c) => (
-                <span
-                  key={c}
-                  className={cn(
-                    "text-[10px] font-medium px-2 py-0.5 rounded-full",
-                    selected === mode.id
-                      ? "bg-apple-blue text-white"
-                      : "bg-[#f5f5f7] dark:bg-[#2c2c2e] text-apple-text-secondary",
-                  )}
-                >
-                  {c}
-                </span>
-              ))}
-            </div>
-          </button>
-        ))}
+      {locale === "en" && (
+        <div className="mb-6 px-4 py-3 rounded-xl bg-[var(--accent-soft)] border border-[var(--chip-selected-border)] text-[12px] text-volt">
+          {ip.enBankActive}
+        </div>
+      )}
 
-        {/* Custom mode card */}
+      {jobTitle && (
+        <div className="mb-6 p-4 rounded-xl feature-panel-muted border border-[var(--chip-selected-border)]">
+          <p className="text-[12px] text-stone mb-1">{ip.currentJob}</p>
+          <p className="text-[15px] font-semibold text-ink">{jobTitle}</p>
+          <p className="text-[12px] text-stone mt-1">{ip.currentJobHint}</p>
+        </div>
+      )}
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {quickModes.map((mode) => {
+          const Icon = MODE_ICONS[mode.id] ?? Bot;
+          const label = tQuickMode(mode.id, mode.label, locale);
+          const isSelected = selected === mode.id;
+
+          return (
+            <button
+              key={mode.id}
+              onClick={() => onSelect(mode)}
+              className={cn(
+                "interview-mode-card group",
+                isSelected && "interview-mode-card-selected"
+              )}
+            >
+              <div className="interview-mode-card-top">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--accent-soft)] border border-[var(--chip-selected-border)] flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-volt" />
+                  </div>
+                  <h3 className="text-[15px] font-semibold text-ink leading-tight">{label}</h3>
+                </div>
+                <span className="interview-mode-card-score">
+                  {mode.questionCount} {ip.questionsUnit}
+                </span>
+              </div>
+
+              <div className="interview-mode-card-middle flex-1">
+                <p className="text-[12px] text-stone mb-2.5">
+                  {jobTitle ? ip.perJob : tJob(mode.jobCategory, locale)}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {mode.categories.slice(0, 4).map((c) => (
+                    <span key={c} className="interview-mode-tag">
+                      {tCategory(c, locale)}
+                    </span>
+                  ))}
+                  {mode.categories.length > 4 && (
+                    <span className="text-[10px] text-stone px-1 self-center">
+                      +{mode.categories.length - 4}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="interview-mode-card-bottom flex items-center justify-between pt-1 border-t border-hairline-soft">
+                <span className="text-[11px] text-stone">{ip.auditPlan}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-volt opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              </div>
+            </button>
+          );
+        })}
+
         <button
           onClick={onCustom}
           className={cn(
-            "text-left apple-card p-5 transition-all hover:shadow-md border-2 border-dashed",
-            "border-[#d2d2d7] dark:border-[#38383a] hover:border-apple-blue/50",
-            selected === "custom"
-              ? "border-apple-blue shadow-md"
-              : "border-[#d2d2d7] dark:border-[#38383a]",
+            "interview-mode-card border-dashed",
+            selected === "custom" && "interview-mode-card-selected"
           )}
         >
-          <span className="text-[28px] mb-3 block">🎨</span>
-          <h3 className="text-[16px] font-semibold text-apple-text dark:text-white mb-2">
-            自定义选题
-          </h3>
-          <p className="text-[12px] text-apple-text-secondary">
-            自由选择题型和题目数量，量身打造面试练习
-          </p>
+          <div className="interview-mode-card-top">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-surface-2 border border-hairline flex items-center justify-center">
+                <Palette className="w-5 h-5 text-stone" />
+              </div>
+              <h3 className="text-[15px] font-semibold text-ink">{ip.customTitle}</h3>
+            </div>
+          </div>
+          <p className="text-[12px] text-stone flex-1">{ip.customDesc}</p>
+          <div className="interview-mode-card-bottom flex items-center justify-end pt-1 border-t border-hairline-soft">
+            <ArrowRight className="w-3.5 h-3.5 text-volt" />
+          </div>
         </button>
       </div>
     </div>

@@ -1,0 +1,8 @@
+node_modules
+.git
+.next
+deploy_*.log
+deploy_*.txt
+build_deploy_log.txt
+cloudrun-backup
+.deploy_tmp

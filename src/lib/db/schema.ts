@@ -10,9 +10,13 @@ export const DB_SCHEMA = `
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
-  username TEXT UNIQUE NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
+  username TEXT NOT NULL,
+  email TEXT,
+  password_hash TEXT,
+  phone TEXT DEFAULT '',
+  wechat_openid TEXT DEFAULT '',
+  qq_openid TEXT DEFAULT '',
+  auth_provider TEXT DEFAULT 'email' CHECK(auth_provider IN ('email', 'phone', 'wechat', 'qq')),
   nickname TEXT DEFAULT '',
   avatar_url TEXT DEFAULT '',
   role TEXT DEFAULT 'user' CHECK(role IN ('user', 'admin', 'super_admin')),
@@ -20,6 +24,10 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL AND email != '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL AND phone != '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wechat ON users(wechat_openid) WHERE wechat_openid IS NOT NULL AND wechat_openid != '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_qq ON users(qq_openid) WHERE qq_openid IS NOT NULL AND qq_openid != '';
 
 CREATE TABLE IF NOT EXISTS admin_sessions (
   id TEXT PRIMARY KEY,
@@ -41,6 +49,13 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
   FOREIGN KEY (admin_id) REFERENCES users(id)
 );
 
+-- ========== 迁移：v2 认证字段 ==========
+-- 为已有数据库添加新列（忽略"已存在"错误）
+ALTER TABLE users ADD COLUMN phone TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN wechat_openid TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN qq_openid TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'email';
+
 -- =====================================================
 -- Phase 1: 简历数据
 -- =====================================================
@@ -57,6 +72,31 @@ CREATE TABLE IF NOT EXISTS resumes (
   tags TEXT DEFAULT '[]',
   status TEXT DEFAULT 'draft',
   created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- =====================================================
+-- 用户业务数据（素材库 / 投递 / 资料 — JSON 持久化）
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS user_materials (
+  user_id TEXT PRIMARY KEY,
+  payload TEXT NOT NULL DEFAULT '[]',
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS user_applications (
+  user_id TEXT PRIMARY KEY,
+  payload TEXT NOT NULL DEFAULT '[]',
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS user_profile_settings (
+  user_id TEXT PRIMARY KEY,
+  payload TEXT NOT NULL DEFAULT '{}',
   updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -283,9 +323,10 @@ CREATE TABLE IF NOT EXISTS enterprise_resume_results (
 -- 初始数据
 -- =====================================================
 
--- 创建默认管理员 (密码: 123456)
-INSERT OR IGNORE INTO users (id, username, email, password_hash, nickname, role, status)
-VALUES ('admin-001', '123456@qq.com', '123456@qq.com', '$2b$10$sBfYfI3vujMfraTWZjO7fOzOyhRE7eXh8C0yPK76XeIrCKwBcn7T2', '系统管理员', 'super_admin', 'active');
+-- 创建默认管理员 (账号: 123456, 密码: 123456)
+INSERT OR IGNORE INTO users (id, username, email, password_hash, phone, wechat_openid, qq_openid, auth_provider, nickname, role, status)
+VALUES ('admin-001', '123456', '123456@qq.com', '$2b$10$sBfYfI3vujMfraTWZjO7fOzOyhRE7eXh8C0yPK76XeIrCKwBcn7T2', '', '', '', 'email', '系统管理员', 'super_admin', 'active');
+UPDATE users SET username = '123456' WHERE id = 'admin-001';
 
 -- 创建默认 Prompt 模板
 INSERT OR IGNORE INTO prompt_templates (id, name, category, model_type, current_version, system_prompt, user_prompt_template, variables, is_active)
@@ -338,6 +379,7 @@ VALUES
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 export type UserStatus = 'active' | 'inactive' | 'banned';
+export type AuthProvider = 'email' | 'phone' | 'wechat' | 'qq';
 export type PromptCategory = 'resume' | 'interview' | 'analysis' | 'matching' | 'jd_parser' | 'talent_profile' | 'other';
 export type ModelType = 'gpt' | 'claude' | 'gemini' | 'deepseek' | 'hunyuan' | 'other';
 export type SubscriptionTier = 'trial' | 'basic' | 'pro' | 'enterprise';
@@ -349,8 +391,12 @@ export type SubscriptionTier = 'trial' | 'basic' | 'pro' | 'enterprise';
 export interface User {
   id: string;
   username: string;
-  email: string;
-  password_hash: string;
+  email: string | null;
+  password_hash: string | null;
+  phone: string;
+  wechat_openid: string;
+  qq_openid: string;
+  auth_provider: AuthProvider;
   nickname: string;
   avatar_url: string;
   role: UserRole;
@@ -362,7 +408,11 @@ export interface User {
 export interface SafeUser {
   id: string;
   username: string;
-  email: string;
+  email: string | null;
+  phone: string;
+  wechat_openid: string;
+  qq_openid: string;
+  auth_provider: AuthProvider;
   nickname: string;
   avatar_url: string;
   role: UserRole;

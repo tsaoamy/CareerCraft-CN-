@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { AppProviders } from "@/components/app-providers";
+import { fontSans, fontMono } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CareerCraft — 一个职业档案，多岗位智能适配",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  title: "职航 — AI 求职匹配智能体",
   description:
-    "只需录入一次经历，AI 自动为每个岗位生成专属简历。告别重复改简历的痛苦。",
-  keywords: ["AI简历", "职业规划", "求职助手", "面试模拟", "JD分析"],
+    "录入一次经历，AI 智能分析岗位匹配度，为每个岗位生成专属简历。精准匹配 · 策略投递 · AI 赋能求职全流程。",
+  keywords: ["职航", "CareerVoyage", "求职匹配", "AI 简历", "智能体", "JD 分析", "校招"],
+  icons: {
+    icon: [{ url: "/images/brand-icon.png", type: "image/png" }],
+    apple: [{ url: "/images/brand-icon.png", type: "image/png" }],
+  },
   openGraph: {
-    title: "CareerCraft — AI 职业规划助手",
-    description: "一个职业档案，多岗位智能适配。AI 驱动的新一代求职助手。",
+    title: "职航 — AI 求职匹配智能体",
+    description: "精准匹配岗位 · 策略投递 · AI 赋能求职全流程。",
     type: "website",
+    images: [{ url: "/images/brand-icon.png", width: 512, height: 512, alt: "职航" }],
   },
 };
 
@@ -21,7 +29,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className="min-h-screen flex flex-col antialiased bg-[var(--apple-bg)] text-[var(--apple-text)] starry-overlay">
+      <body
+        className={`${fontSans.variable} ${fontMono.variable} min-h-screen flex flex-col antialiased font-sans bg-surface-1 text-ink`}
+      >
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`(function(){try{var d=document.documentElement,t=localStorage.getItem('theme'),dark=false;if(t==='dark')dark=true;else if(t!=='light')dark=window.matchMedia('(prefers-color-scheme: dark)').matches;if(dark){d.classList.add('dark');d.style.colorScheme='dark';}else{d.classList.remove('dark');d.style.colorScheme='light';}}catch(e){}})();`}
+        </Script>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

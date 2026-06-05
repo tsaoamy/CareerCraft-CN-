@@ -1,322 +1,438 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { User, Shield, Bell, CreditCard, Settings, Palette, Briefcase, Trash2, LogOut, Camera, Check, Save } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/lib/auth-context";
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import {
+  User, Shield, Bell, Palette, Briefcase,
+  Trash2, Camera, Save, Monitor, Sun, Moon, Lightbulb,
+  MapPin, Target, Wallet, Sparkles, FileText, Send,
+} from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input, SystemTextarea } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/lib/auth-context';
+import { useNotifications } from '@/lib/notification-context';
+import { useUserProfile } from '@/lib/user-profile-context';
+import { useMaterials } from '@/lib/material-context';
+import { buildProfileHints } from '@/lib/profile-hints';
+import { ArrowRight } from 'lucide-react';
+import { ContactBindField } from '@/components/settings/contact-bind-field';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { processAvatarFile } from '@/lib/avatar-utils';
+import { useLocale } from '@/lib/i18n/locale-context';
+import { useToast } from '@/components/system/toast';
+import { GlassPageHero } from '@/components/ui/glass-page-hero';
+import { FeaturePageRoot, FeaturePageShell } from '@/components/layout/feature-page-shell';
+import { FilterChip } from '@/components/system/system-card';
+import { BrandButton } from '@/components/design-system/brand-button';
+import { SystemDialog } from '@/components/system/dialog';
+import type { NotificationPreferences } from '@/types/notification';
 
 const THEMES = [
-  { id: "system", name: "跟随系统", icon: "🖥️" },
-  { id: "light", name: "浅色模式", icon: "☀️" },
-  { id: "dark", name: "深色模式", icon: "🌙" },
+  { id: 'system', name: '跟随系统', icon: Monitor },
+  { id: 'light', name: '浅色', icon: Sun },
+  { id: 'dark', name: '深色', icon: Moon },
 ];
+
+const SECTIONS = [
+  { id: 'profile', label: '基本信息', icon: User },
+  { id: 'career', label: '求职偏好', icon: Briefcase },
+  { id: 'appearance', label: '外观', icon: Palette },
+  { id: 'notifications', label: '通知', icon: Bell },
+  { id: 'security', label: '安全', icon: Shield },
+] as const;
+
+type SectionId = (typeof SECTIONS)[number]['id'];
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [saved, setSaved] = useState(false);
-  const [activeTheme, setActiveTheme] = useState("system");
-  const [username, setUsername] = useState(user?.username || "求职者");
-  const [email, setEmail] = useState(user?.email || "user@example.com");
-  const [bio, setBio] = useState("3年互联网产品经验，专注于AI产品方向");
-  const [phone, setPhone] = useState("138-0000-0000");
-  const [location, setLocation] = useState("北京市");
-  const [targetRole, setTargetRole] = useState("高级产品经理");
+  const { profile, isLoaded, saveProfile } = useUserProfile();
+  const { materials } = useMaterials();
+  const { preferences, updatePreferences } = useNotifications();
+  const { theme, setTheme } = useTheme();
+  const { locale } = useLocale();
+  const { success } = useToast();
+  const [section, setSection] = useState<SectionId>('profile');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const [form, setForm] = useState({
+    displayName: '',
+    avatarUrl: '',
+    bio: '',
+    location: '',
+    targetRole: '',
+    salaryMin: '',
+    salaryMax: '',
+  });
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const hints = useMemo(() => buildProfileHints(materials), [materials]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    setForm({
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl || '',
+      bio: profile.bio,
+      location: profile.location,
+      targetRole: profile.targetRole,
+      salaryMin: profile.salaryMin,
+      salaryMax: profile.salaryMax,
+    });
+  }, [isLoaded, profile]);
+
+  const displayName = form.displayName || user?.username || '用户';
+  const avatarPreview = {
+    avatarUrl: form.avatarUrl,
+    avatarChar: displayName.charAt(0).toUpperCase(),
+    avatarGradient: profile.avatarGradient,
   };
 
+  function updateField<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleSave() {
+    const name = form.displayName.trim();
+    saveProfile({
+      displayName: name,
+      avatarUrl: form.avatarUrl,
+      avatarChar: name.charAt(0).toUpperCase() || '用',
+      bio: form.bio.trim(),
+      location: form.location.trim(),
+      targetRole: form.targetRole.trim(),
+      salaryMin: form.salaryMin.trim(),
+      salaryMax: form.salaryMax.trim(),
+    });
+    success('设置已保存');
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError('');
+    try {
+      const dataUrl = await processAvatarFile(file);
+      setForm((prev) => ({ ...prev, avatarUrl: dataUrl }));
+      saveProfile({ avatarUrl: dataUrl });
+      success('头像已更新');
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : '上传失败');
+    }
+    e.target.value = '';
+  }
+
   return (
-    <div className="max-w-[720px] mx-auto px-5 py-10 md:py-14 animate-fade-in-up">
-      {/* Header with Avatar — Starry Sky */}
-      <div className="relative overflow-hidden rounded-3xl nebula-hero border border-white/10 p-6 md:p-8 mb-10">
-        <div className="shooting-star" /><div className="shooting-star" />
-        <div className="constellation-dot" style={{top:'10%',left:'8%'}} />
-        <div className="constellation-dot" style={{top:'20%',left:'25%'}} />
-        <div className="constellation-dot" style={{top:'12%',left:'50%'}} />
-        <div className="constellation-dot" style={{top:'18%',left:'75%'}} />
-        <div className="constellation-dot" style={{top:'30%',left:'88%'}} />
-        <div className="relative z-10 flex items-center gap-5">
-          <div className="relative group cursor-pointer">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-[28px] font-bold shadow-lg shadow-purple-500/30">
-              {(username || "求")[0]}
-            </div>
-            <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera className="w-6 h-6 text-white" />
-            </div>
+    <FeaturePageRoot>
+      <GlassPageHero
+        compact
+        className="mx-0 rounded-none border-x-0 border-t-0"
+        title="偏好设置"
+        subtitle="管理账户、求职目标与系统体验"
+        badge="Preferences"
+      />
+
+      <FeaturePageShell>
+        <div className="grid lg:grid-cols-[220px_1fr] gap-10 lg:gap-14">
+          <nav className="hidden lg:flex flex-col gap-1 sticky top-24 self-start">
+            {SECTIONS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSection(id)}
+                className={`settings-nav-item ${section === id ? 'settings-nav-item-active' : ''}`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="lg:hidden flex flex-wrap gap-2 mb-6">
+            {SECTIONS.map(({ id, label }) => (
+              <FilterChip key={id} active={section === id} onClick={() => setSection(id)}>
+                {label}
+              </FilterChip>
+            ))}
           </div>
-          <div>
-            <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[12px] text-purple-200">
-              <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-              星河账户 · PRO
-            </div>
-            <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight text-white">
-              个人中心
-            </h1>
-            <p className="text-[15px] text-blue-100/70 mt-1">
-              管理你的账号信息和偏好设置
-            </p>
+
+          <div className="min-w-0 space-y-8">
+            {section === 'profile' && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-4">
+                      <label className="relative group cursor-pointer shrink-0">
+                        <UserAvatar profile={avatarPreview} displayName={displayName} locale={locale} className="w-20 h-20" textClassName="text-2xl" />
+                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera className="w-5 h-5 text-white" />
+                        </div>
+                        <input type="file" accept="image/*" onChange={handleAvatarUpload} className="sr-only" />
+                      </label>
+                      <div>
+                        <CardTitle>个人资料</CardTitle>
+                        <p className="text-caption-sm text-stone mt-1">点击头像上传 · 完善资料让 AI 更懂你</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-caption-md text-stone flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5" /> 显示名称
+                        </label>
+                        <Input value={form.displayName} onChange={(e) => updateField('displayName', e.target.value)} placeholder="你的名称" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-caption-md text-stone flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5" /> 所在地
+                        </label>
+                        <Input value={form.location} onChange={(e) => updateField('location', e.target.value)} placeholder="如：深圳" />
+                      </div>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-caption-md text-stone flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5" /> 登录账号
+                        </label>
+                        <Input value={user?.username || ''} disabled placeholder="登录账号" />
+                      </div>
+                    </div>
+                    {user && (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <ContactBindField type="email" currentValue={user.email} />
+                        <ContactBindField type="phone" currentValue={user.phone} />
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <label className="text-caption-md text-stone flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" /> 个人简介
+                      </label>
+                      <SystemTextarea value={form.bio} onChange={(e) => updateField('bio', e.target.value)} rows={3} placeholder="简要介绍你的背景与优势，让 AI 为你生成更精准的简历和面试方案" />
+                    </div>
+                    {avatarError && <p className="text-caption-sm text-sale">{avatarError}</p>}
+                    <BrandButton variant="volt" size="md" onClick={handleSave}>
+                      <Save className="w-4 h-4" /> 保存修改
+                    </BrandButton>
+                  </CardContent>
+                </Card>
+
+                {hints.hasData && (
+                  <Card className="border-volt/20">
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <Lightbulb className="w-4 h-4 text-volt" />
+                        <CardTitle className="text-base">AI 参考建议</CardTitle>
+                      </div>
+                      <p className="text-caption-sm text-stone mt-1">基于素材库分析，以下建议可一键采用</p>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {hints.bioSuggestion && (
+                        <div className="p-3.5 rounded-xl bg-[var(--accent-soft)] border border-[var(--chip-selected-border)]">
+                          <p className="text-[11px] font-semibold text-volt mb-1">参考建议 · 个人简介</p>
+                          <p className="text-[12px] text-apple-text-secondary leading-relaxed">{hints.bioSuggestion}</p>
+                          <button type="button" onClick={() => updateField('bio', hints.bioSuggestion!)} className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-volt hover:underline">
+                            采用此建议 <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                      {hints.targetRoleSuggestion && (
+                        <div className="p-3.5 rounded-xl bg-[var(--accent-soft)] border border-[var(--chip-selected-border)]">
+                          <p className="text-[11px] font-semibold text-volt mb-1">参考建议 · 目标岗位</p>
+                          <p className="text-[12px] text-apple-text-secondary leading-relaxed">{hints.targetRoleSuggestion}</p>
+                          <button type="button" onClick={() => updateField('targetRole', hints.targetRoleSuggestion!)} className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-volt hover:underline">
+                            采用此建议 <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                      {hints.locationSuggestion && (
+                        <div className="p-3.5 rounded-xl bg-[var(--accent-soft)] border border-[var(--chip-selected-border)]">
+                          <p className="text-[11px] font-semibold text-volt mb-1">参考建议 · 所在地</p>
+                          <p className="text-[12px] text-apple-text-secondary leading-relaxed">{hints.locationSuggestion}</p>
+                          <button type="button" onClick={() => updateField('location', hints.locationSuggestion!)} className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-volt hover:underline">
+                            采用此建议 <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+
+            {section === 'career' && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Target className="w-5 h-5 text-volt" />
+                      <CardTitle>求职目标</CardTitle>
+                    </div>
+                    <p className="text-caption-sm text-stone mt-1">设定你的职业方向，AI 将据此优化简历与面试</p>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="text-caption-md text-stone flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5" /> 目标岗位
+                      </label>
+                      <Input value={form.targetRole} onChange={(e) => updateField('targetRole', e.target.value)} placeholder="如：前端开发工程师、产品经理" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-caption-md text-stone flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" /> 期望城市
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {['北京', '上海', '深圳', '杭州', '广州', '成都'].map((city) => (
+                          <FilterChip key={city} active={form.location.includes(city)} onClick={() => updateField('location', city)}>
+                            {city}
+                          </FilterChip>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-caption-md text-stone flex items-center gap-1.5">
+                        <Wallet className="w-3.5 h-3.5" /> 期望薪资
+                      </label>
+                      <div className="flex items-end gap-3">
+                        <Input placeholder="最低 K" className="max-w-[120px]" value={form.salaryMin} onChange={(e) => updateField('salaryMin', e.target.value)} />
+                        <span className="text-stone pb-3">—</span>
+                        <Input placeholder="最高 K" className="max-w-[120px]" value={form.salaryMax} onChange={(e) => updateField('salaryMax', e.target.value)} />
+                      </div>
+                    </div>
+
+                    <BrandButton variant="volt" size="md" onClick={handleSave}>
+                      <Save className="w-4 h-4" /> 保存求职偏好
+                    </BrandButton>
+                  </CardContent>
+                </Card>
+
+                {hints.hasData && hints.topSkills.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-volt" />
+                        <CardTitle className="text-base">技能画像</CardTitle>
+                      </div>
+                      <p className="text-caption-sm text-stone mt-1">基于素材库识别的核心技能</p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {hints.topSkills.map((s) => (
+                          <span key={s} className="text-[12px] px-3 py-1.5 rounded-full bg-[var(--accent-soft)] text-volt font-medium">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                      {hints.experienceTitles.length > 0 && (
+                        <p className="text-[12px] text-apple-text-secondary mt-3">
+                          相关经历：{hints.experienceTitles.join('、')}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+
+            {section === 'appearance' && (
+              <Card>
+                <CardHeader><CardTitle>外观设置</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {THEMES.map((th) => (
+                      <button
+                        key={th.id}
+                        type="button"
+                        onClick={() => setTheme(th.id)}
+                        className={`flex flex-col items-center gap-2 p-5 border transition-all duration-300 ${
+                          theme === th.id ? 'border-volt bg-volt/5' : 'border-white/10 hover:border-white/20'
+                        }`}
+                      >
+                        <th.icon className="w-6 h-6 text-volt" />
+                        <span className="text-caption-md text-white">{th.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {section === 'notifications' && (
+              <Card>
+                <CardHeader><CardTitle>通知设置</CardTitle></CardHeader>
+                <CardContent className="space-y-0">
+                  {(
+                    [
+                      { key: 'resumeComplete' as const, label: '简历生成完成', desc: 'AI 简历生成完毕时通知' },
+                      { key: 'jdAnalysis' as const, label: 'JD 分析完成', desc: '分析结果就绪时通知' },
+                      { key: 'interviewScore' as const, label: '面试评分出炉', desc: '评分报告生成时通知' },
+                      { key: 'productUpdates' as const, label: '产品更新', desc: '新功能与版本通知' },
+                    ] as { key: keyof NotificationPreferences; label: string; desc: string }[]
+                  ).map((item) => (
+                    <label key={item.key} className="settings-row cursor-pointer">
+                      <div>
+                        <span className="text-body-md text-white block">{item.label}</span>
+                        <span className="text-caption-sm text-stone">{item.desc}</span>
+                      </div>
+                      <input type="checkbox" checked={preferences[item.key]} onChange={(e) => updatePreferences({ [item.key]: e.target.checked })} className="apple-toggle" />
+                    </label>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {section === 'security' && (
+              <>
+                <Card>
+                  <CardHeader><CardTitle>安全设置</CardTitle></CardHeader>
+                  <CardContent className="space-y-0">
+                    <div className="settings-row">
+                      <div>
+                        <p className="text-body-md text-white">修改密码</p>
+                        <p className="text-caption-sm text-stone">建议每 90 天更换</p>
+                      </div>
+                      <BrandButton href="/forgot-password" variant="outline-dark" size="sm">修改</BrandButton>
+                    </div>
+                    <div className="settings-row">
+                      <div>
+                        <p className="text-body-md text-white">会员计划</p>
+                        <p className="text-caption-sm text-stone">当前：免费版</p>
+                      </div>
+                      <Badge variant="default">Free</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-sale/20">
+                  <CardHeader>
+                    <CardTitle className="text-sale">账号管理</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="settings-row border-none pt-0">
+                      <p className="text-caption-md text-stone max-w-md">删除账号及所有数据，不可撤销。</p>
+                      <BrandButton variant="primary" size="sm" onClick={() => setDeleteOpen(true)}>
+                        <Trash2 className="w-3.5 h-3.5" /> 删除
+                      </BrandButton>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </div>
-      </div>
+      </FeaturePageShell>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: "素材库", value: "5段", color: "text-apple-blue", bg: "bg-[#e8f4fd] dark:bg-[#003366]" },
-          { label: "简历版本", value: "4个", color: "text-apple-purple", bg: "bg-[#f4f1fa] dark:bg-[#2d1445]" },
-          { label: "面试练习", value: "3次", color: "text-apple-green", bg: "bg-[#e8f8ee] dark:bg-[#0a3622]" },
-        ].map((stat) => (
-          <div key={stat.label} className={`${stat.bg} rounded-xl p-4 text-center`}>
-            <div className={`text-[22px] font-bold ${stat.color}`}>{stat.value}</div>
-            <div className={`text-[11px] ${stat.color}/70 mt-0.5`}>{stat.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="space-y-5">
-        {/* Profile */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2.5">
-              <User className="w-[18px] h-[18px] text-apple-blue" />
-              <CardTitle>基本信息</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[13px] font-medium text-apple-text dark:text-white">用户名</label>
-                <Input value={username} onChange={(e) => setUsername(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[13px] font-medium text-apple-text dark:text-white">邮箱</label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[13px] font-medium text-apple-text dark:text-white">手机号</label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[13px] font-medium text-apple-text dark:text-white">所在地</label>
-                <Input value={location} onChange={(e) => setLocation(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-apple-text dark:text-white">个人简介</label>
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                className="w-full min-h-[80px] p-3.5 rounded-xl border border-[#d2d2d7] dark:border-[#48484a] bg-[#f5f5f7] dark:bg-[#1c1c1e] text-[14px] text-apple-text dark:text-white resize-y focus:outline-none focus:ring-2 focus:ring-apple-blue/40 focus:border-apple-blue"
-                rows={3}
-              />
-            </div>
-            <Button onClick={handleSave} className="gap-2">
-              {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {saved ? "已保存" : "保存修改"}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Career Goal */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2.5">
-              <Briefcase className="w-[18px] h-[18px] text-apple-purple" />
-              <CardTitle>求职偏好</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-apple-text dark:text-white">目标岗位</label>
-              <Input value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="如：高级产品经理" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-apple-text dark:text-white">期望城市</label>
-              <div className="flex flex-wrap gap-2">
-                {["北京", "上海", "深圳", "杭州", "广州", "成都"].map((city) => (
-                  <button
-                    key={city}
-                    onClick={() => setLocation(city)}
-                    className={`text-[13px] px-3.5 py-1.5 rounded-full transition-all ${
-                      location.includes(city)
-                        ? "bg-apple-blue text-white"
-                        : "bg-[#f5f5f7] dark:bg-[#2c2c2e] text-apple-text-secondary hover:bg-[#e8e8ed] dark:hover:bg-[#3a3a3c]"
-                    }`}
-                  >
-                    {city}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-apple-text dark:text-white">期望薪资范围</label>
-              <div className="flex items-center gap-3">
-                <Input placeholder="最低 (K)" className="max-w-[120px]" />
-                <span className="text-apple-text-secondary">-</span>
-                <Input placeholder="最高 (K)" className="max-w-[120px]" />
-                <span className="text-[13px] text-apple-text-secondary">K/月</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Appearance */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2.5">
-              <Palette className="w-[18px] h-[18px] text-apple-orange" />
-              <CardTitle>外观设置</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-3">
-              {THEMES.map((theme) => (
-                <button
-                  key={theme.id}
-                  onClick={() => setActiveTheme(theme.id)}
-                  className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                    activeTheme === theme.id
-                      ? "border-apple-blue bg-[#e8f4fd] dark:bg-[#003366]"
-                      : "border-[#d2d2d7] dark:border-[#38383a] hover:border-apple-blue/30"
-                  }`}
-                >
-                  <span className="text-[24px]">{theme.icon}</span>
-                  <span className="text-[13px] font-medium text-apple-text dark:text-white">{theme.name}</span>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Membership */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2.5">
-              <CreditCard className="w-[18px] h-[18px] text-apple-purple" />
-              <CardTitle>会员计划</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Badge variant="default" className="text-[12px]">免费版</Badge>
-                <span className="text-[13px] text-apple-text-secondary">
-                  3/10 简历生成次数
-                </span>
-              </div>
-            </div>
-            <div className="h-2 bg-[#f5f5f7] dark:bg-[#2c2c2e] rounded-full mb-4 overflow-hidden">
-              <div className="h-full w-[30%] bg-gradient-to-r from-apple-blue to-apple-purple rounded-full" />
-            </div>
-            <div className="grid sm:grid-cols-2 gap-3 mb-4">
-              {["无限简历生成", "高级JD分析", "AI面试深度反馈", "简历模板库"].map((feat) => (
-                <div key={feat} className="flex items-center gap-2 text-[13px] text-apple-text-secondary">
-                  <Check className="w-3.5 h-3.5 text-apple-green" />
-                  {feat}
-                </div>
-              ))}
-            </div>
-            <Button variant="secondary" className="bg-gradient-to-r from-apple-purple/10 to-apple-purple/5">
-              升级到专业版 · ¥29.9/月
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Notifications */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2.5">
-              <Bell className="w-[18px] h-[18px] text-apple-orange" />
-              <CardTitle>通知设置</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { label: "简历生成完成", desc: "当AI简历生成完毕时通知", checked: true },
-                { label: "JD 分析完成", desc: "当JD分析结果就绪时通知", checked: true },
-                { label: "面试评分出炉", desc: "当面试评分报告生成时通知", checked: false },
-                { label: "产品更新", desc: "接收新功能和版本更新通知", checked: true },
-                { label: "行业资讯", desc: "接收AI职业发展相关的行业动态", checked: false },
-              ].map((item) => (
-                <label key={item.label} className="flex items-start justify-between cursor-pointer gap-4">
-                  <div>
-                    <span className="text-[14px] text-apple-text dark:text-white block">{item.label}</span>
-                    <span className="text-[12px] text-apple-text-secondary">{item.desc}</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    defaultChecked={item.checked}
-                    className="apple-toggle mt-1"
-                  />
-                </label>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Security */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2.5">
-              <Settings className="w-[18px] h-[18px] text-apple-text-secondary" />
-              <CardTitle>安全设置</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[14px] font-medium text-apple-text dark:text-white">修改密码</p>
-                <p className="text-[12px] text-apple-text-secondary">建议每 90 天更换一次密码</p>
-              </div>
-              <Button variant="outline" size="sm">修改</Button>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[14px] font-medium text-apple-text dark:text-white">两步验证</p>
-                <p className="text-[12px] text-apple-text-secondary">增加账号安全性</p>
-              </div>
-              <Button variant="outline" size="sm">开启</Button>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[14px] font-medium text-apple-text dark:text-white">登录设备</p>
-                <p className="text-[12px] text-apple-text-secondary">当前：Windows · Chrome · 北京</p>
-              </div>
-              <Button variant="outline" size="sm">管理</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Danger Zone */}
-        <Card className="border-red-200 dark:border-red-900/30">
-          <CardHeader>
-            <div className="flex items-center gap-2.5">
-              <Shield className="w-[18px] h-[18px] text-apple-red" />
-              <CardTitle className="text-apple-red">账号管理</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[14px] font-medium text-apple-text dark:text-white">删除账号</p>
-                <p className="text-[13px] text-apple-text-secondary mt-1">
-                  删除账号及其所有数据（素材库、简历、面试记录等），此操作不可撤销。
-                </p>
-              </div>
-              <Button variant="destructive" size="sm" className="gap-1.5">
-                <Trash2 className="w-3.5 h-3.5" />
-                删除账号
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      <SystemDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="确认删除账号？"
+        description="此操作将永久删除你的素材库、简历与面试记录，无法恢复。"
+        variant="destructive"
+        confirmLabel="确认删除"
+        onConfirm={() => success('演示环境：账号删除已模拟')}
+      />
+    </FeaturePageRoot>
   );
 }

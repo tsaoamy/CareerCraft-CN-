@@ -1,10 +1,14 @@
 /**
- * GET /api/ai/analytics — AI 分析数据（管理后台用）
+ * GET /api/ai/analytics — AI 分析数据（管理后台用，需管理员权限）
  */
 import { NextRequest, NextResponse } from 'next/server';
 import type { AIHeatmapData, UserGrowthData, KnowledgeRecommendation } from '@/lib/ai/types';
+import { requireAdmin } from '@/lib/api/middleware';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth instanceof NextResponse) return auth;
+
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'heatmap';
 

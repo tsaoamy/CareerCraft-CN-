@@ -5,9 +5,13 @@
 
 import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'careercraft-jwt-secret-key-change-in-production-2025'
-);
+const rawSecret = process.env.JWT_SECRET;
+if (!rawSecret) {
+  throw new Error(
+    '[JWT] JWT_SECRET 环境变量未设置。本地开发请在 .env.local 中配置，生产环境请在腾讯云控制台配置。'
+  );
+}
+const JWT_SECRET = new TextEncoder().encode(rawSecret);
 
 const JWT_EXPIRES_IN = '7d';
 const ADMIN_JWT_EXPIRES_IN = '24h';

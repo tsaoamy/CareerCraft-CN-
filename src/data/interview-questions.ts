@@ -4,6 +4,9 @@
 // ==========================================
 
 import type { InterviewQuestion, JobCategory, InterviewCategory } from "@/types/interview";
+import { extraQuestionBank } from "./interview-questions-extra";
+import { mixedQuestionBank } from "./interview-questions-mixed";
+import type { QuestionFormat } from "@/types/interview";
 
 let _id = 0;
 function q(
@@ -14,8 +17,9 @@ function q(
   focusPoints: string[],
   referencePoints: string[],
   suggestedDuration: number,
+  language: 'zh' | 'en' = 'zh',
 ): InterviewQuestion {
-  return { id: `q${++_id}`, question, category, jobs, difficulty, focusPoints, referencePoints, suggestedDuration };
+  return { id: `q${++_id}`, question, category, jobs, difficulty, focusPoints, referencePoints, suggestedDuration, language };
 }
 
 // ──── 题目列表 ────
@@ -838,6 +842,11 @@ export const questionBank: InterviewQuestion[] = [
     ["建立优先级矩阵（重要/紧急四象限）", "每周与干系人对齐一次", "关键路径识别和资源倾斜", "设置检查节点确保不失控"],
     120,
   ),
+
+  // ── 扩展题库（行为/情景/技术 · 中英文） ──
+  ...extraQuestionBank,
+  // ── 混合题型（AI / 单选 / 多选 / 代码） ──
+  ...mixedQuestionBank,
 ];
 
 // ──── 快捷模式 ────
@@ -849,6 +858,14 @@ export const quickModes = [
     questionCount: 12,
     categories: ["自我介绍", "项目追问", "行为面试", "情景问答", "职业规划", "通用问答", "团队协作"] as InterviewCategory[],
     icon: "🎯",
+  },
+  {
+    id: "situational",
+    label: "情景面试",
+    jobCategory: "通用" as JobCategory,
+    questionCount: 6,
+    categories: ["情景问答", "案例分析", "通用问答", "项目追问"] as InterviewCategory[],
+    icon: "🎭",
   },
   {
     id: "behavior",
@@ -917,6 +934,49 @@ export const quickModes = [
 ];
 
 // ──── 工具函数 ────
+export function getQuestionLanguage(q: InterviewQuestion): 'zh' | 'en' {
+  return q.language ?? 'zh';
+}
+
+export function filterQuestionsByLanguage(
+  questions: InterviewQuestion[],
+  language: 'zh' | 'en'
+): InterviewQuestion[] {
+  return questions.filter((q) => getQuestionLanguage(q) === language);
+}
+
+export function getQuestionFormat(q: InterviewQuestion): QuestionFormat {
+  return q.format ?? 'essay';
+}
+
+export const FORMAT_LABELS: Record<QuestionFormat, string> = {
+  essay: '简答题',
+  single_choice: '单选题',
+  multi_choice: '多选题',
+  code: '代码题',
+};
+
+export function getQuestionBankStats(language?: 'zh' | 'en'): {
+  total: number;
+  behavioral: number;
+  situational: number;
+  technical: number;
+  ai: number;
+  choice: number;
+  code: number;
+} {
+  const pool = language ? filterQuestionsByLanguage(questionBank, language) : questionBank;
+  return {
+    total: pool.length,
+    behavioral: pool.filter((q) => q.category === '行为面试' || q.category === '团队协作').length,
+    situational: pool.filter((q) => q.category === '情景问答' || q.category === '案例分析').length,
+    technical: pool.filter((q) => q.category === '技术面试').length,
+    ai: pool.filter((q) => q.category === 'AI 应用').length,
+    choice: pool.filter((q) => q.format === 'single_choice' || q.format === 'multi_choice').length,
+    code: pool.filter((q) => q.format === 'code').length,
+  };
+}
+
 export function getQuestionsByCategory(category: InterviewCategory): InterviewQuestion[] {
   return questionBank.filter((q) => q.category === category);
 }
@@ -925,12 +985,84 @@ export function getQuestionsByJob(job: JobCategory): InterviewQuestion[] {
   return questionBank.filter((q) => q.jobs.length === 0 || q.jobs.includes(job));
 }
 
-export function pickQuestions(job: JobCategory, count: number, categories?: InterviewCategory[]): InterviewQuestion[] {
+export function pickMixedQuestions(pool: InterviewQuestion[], count: number): InterviewQuestion[] {
+  if (pool.length === 0) return [];
+  const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5);
+
+  const byFormat = {
+    essay: shuffle(pool.filter((q) => !q.format || q.format === 'essay')),
+    single_choice: shuffle(pool.filter((q) => q.format === 'single_choice')),
+    multi_choice: shuffle(pool.filter((q) => q.format === 'multi_choice')),
+    code: shuffle(pool.filter((q) => q.format === 'code')),
+  };
+
+  const selected: InterviewQuestion[] = [];
+  const used = new Set<string>();
+
+  const pickFrom = (list: InterviewQuestion[]) => {
+    const q = list.find((x) => !used.has(x.id));
+    if (q) {
+      selected.push(q);
+      used.add(q.id);
+    }
+  };
+
+  if (count >= 4) {
+    pickFrom(byFormat.essay);
+    pickFrom(byFormat.single_choice);
+    pickFrom(byFormat.multi_choice);
+    pickFrom(byFormat.code);
+  } else if (count >= 2) {
+    pickFrom(byFormat.single_choice.length ? byFormat.single_choice : byFormat.essay);
+    pickFrom(byFormat.code.length ? byFormat.code : byFormat.essay);
+  }
+
+  const rest = shuffle(pool.filter((q) => !used.has(q.id)));
+  for (const q of rest) {
+    if (selected.length >= count) break;
+    selected.push(q);
+    used.add(q.id);
+  }
+
+  const order: QuestionFormat[] = ['essay', 'single_choice', 'multi_choice', 'code'];
+  const buckets = new Map<QuestionFormat, InterviewQuestion[]>();
+  for (const q of selected) {
+    const f = getQuestionFormat(q);
+    if (!buckets.has(f)) buckets.set(f, []);
+    buckets.get(f)!.push(q);
+  }
+
+  const interleaved: InterviewQuestion[] = [];
+  let guard = 0;
+  while (interleaved.length < selected.length && guard < selected.length * 5) {
+    const fmt = order[guard % order.length];
+    const bucket = buckets.get(fmt);
+    if (bucket?.length) interleaved.push(bucket.shift()!);
+    else {
+      for (const b of buckets.values()) {
+        if (b.length) {
+          interleaved.push(b.shift()!);
+          break;
+        }
+      }
+    }
+    guard++;
+  }
+
+  return interleaved.length > 0 ? interleaved : selected.slice(0, count);
+}
+
+export function pickQuestions(
+  job: JobCategory,
+  count: number,
+  categories?: InterviewCategory[],
+  language: 'zh' | 'en' = 'zh'
+): InterviewQuestion[] {
   let pool = getQuestionsByJob(job);
+  pool = filterQuestionsByLanguage(pool, language);
   if (categories && categories.length > 0) {
     pool = pool.filter((q) => categories.includes(q.category));
   }
-  // 打乱 + 取前 N
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
 }

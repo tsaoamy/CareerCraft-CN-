@@ -19,6 +19,7 @@ import type {
   TrendDataPoint,
 } from "@/types/admin";
 import { sanitizeOutput } from "./dto";
+import { OFFICIAL_EMAIL } from "@/lib/site-config";
 
 // ──── 随机工具 ────
 const rand = (min: number, max: number) =>
@@ -36,7 +37,7 @@ const pick = <T>(arr: T[]): T => arr[rand(0, arr.length - 1)];
 export const MOCK_ADMIN: AdminUser = {
   id: "admin-001",
   name: "CareerCraft Admin",
-  email: "1759486723@qq.com",
+  email: OFFICIAL_EMAIL,
   role: "super_admin",
   avatar: "",
   status: "active",

@@ -1,0 +1,46 @@
+# Stage 1: Build (方案2 - 优化内存使用)
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# 先复制依赖文件，利用 Docker 缓存层
+COPY package.json package-lock.json* ./
+
+# 使用 --legacy-peer-deps 避免 peer 依赖冲突
+# 使用 npm install 代替 npm ci（更容错）
+RUN npm install --legacy-peer-deps --no-audit --no-fund
+
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+# 匹配 CloudRun 构建环境可用内存（约2GB），设为4096可能OOM
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV GENERATE_SOURCEMAP=false
+
+# CloudBase 前端公开环境变量（Publishable Key，设计上可公开）
+ENV NEXT_PUBLIC_CLOUDBASE_ENV_ID=careercraft-d4gfk3hi163786996
+ENV NEXT_PUBLIC_CLOUDBASE_REGION=ap-shanghai
+ENV NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY=eyJhbGciOiJSUzI1NiIsImtpZCI6IjlkMWRjMzFlLWI0ZDAtNDQ4Yi1hNzZmLWIwY2M2M2Q4MTQ5OCJ9.eyJpc3MiOiJodHRwczovL2NhcmVlcmNyYWZ0LWQ0Z2ZrM2hpMTYzNzg2OTk2LmFwLXNoYW5naGFpLnRjYi1hcGkudGVuY2VudGNsb3VkYXBpLmNvbSIsInN1YiI6ImFub24iLCJhdWQiOiJjYXJlZXJjcmFmdC1kNGdmazNoaTE2Mzc4Njk5NiIsImV4cCI6NDA4NDE2MTk4MCwiaWF0IjoxNzgwNDc4NzgwLCJub25jZSI6IkFtSm83T1AwVE9tdnVVeXFMU1BURWciLCJhdF9oYXNoIjoiQW1KbzdPUDBUT212dVV5cUxTUFRFZyIsIm5hbWUiOiJBbm9ueW1vdXMiLCJzY29wZSI6ImFub255bW91cyIsInByb2plY3RfaWQiOiJjYXJlZXJjcmFmdC1kNGdmazNoaTE2Mzc4Njk5NiIsIm1ldGEiOnsicGxhdGZvcm0iOiJQdWJsaXNoYWJsZUtleSJ9LCJ1c2VyX3R5cGUiOiIiLCJjbGllbnRfdHlwZSI6ImNsaWVudF91c2VyIiwiaXNfc3lzdGVtX2FkbWluIjpmYWxzZX0.ZFWzEVNTPLX4kxFA3wAccGLUPsSGwhf7O7myMxNXF-oJ30_Ymng_uTMRu21urTTx4g7BB5lkGZGcHv-G8CACFzP7oLvmnZWfu7NLDJBrkyKVIYqJVnypapsNW9mQfC5eTxgs-SYFrblmC_TWKHKg2iq5U6mVmGsVLmCRmsRcjUspKvtRCoYHInxnyOrwE2Cri4PPWm7jquj_cIbvpJBYOvIhpN5r1L88TB8m2RI5utV6I1x2rJI7NBdwNnO4mYkLGgjGOXPQrDId7alG5kGePOF5wr-gMl2qibmq1O5z9kfvH7_QL-eNZ93LU89oRmC4PADn5q0JX292EL7Ru92A5w
+
+# 生产环境构建
+RUN npx next build
+
+# Stage 2: Production
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+
+# Copy standalone output
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+RUN mkdir -p /data && chown node:node /data
+
+EXPOSE 3000
+USER node
+CMD ["node", "server.js"]

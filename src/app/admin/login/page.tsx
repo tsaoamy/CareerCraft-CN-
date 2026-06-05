@@ -4,10 +4,12 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { persistAdminLogin, useAdminAuth } from '@/lib/admin/admin-auth-context';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const { refreshSession } = useAdminAuth();
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
@@ -18,22 +20,35 @@ export default function AdminLoginPage() {
     setError('');
     setLoading(true);
 
-    // 模拟管理员验证（生产环境替换为真实 API）
-    await new Promise(r => setTimeout(r, 800));
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method: 'email',
+          login: username.trim(),
+          password,
+          isAdmin: true,
+        }),
+      });
+      const data = await res.json();
 
-    if (email === '123456@qq.com' && password === '123456') {
-      localStorage.setItem('admin_token', 'admin_jwt_mock_token');
-      document.cookie = 'admin_session=valid; path=/; max-age=86400';
-      router.push('/admin/dashboard');
-    } else {
-      setError('邮箱或密码错误，请重试');
+      if (data.success && data.data?.token) {
+        persistAdminLogin(data.data.token);
+        await refreshSession();
+        router.replace('/admin/dashboard');
+      } else {
+        setError(data.error || '账号或密码错误，请重试');
+      }
+    } catch {
+      setError('网络错误，请稍后重试');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7] p-4">
-      {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-100/40 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-100/40 rounded-full blur-3xl" />
@@ -45,7 +60,6 @@ export default function AdminLoginPage() {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="w-full max-w-md"
       >
-        {/* Logo 区域 */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-sm border border-black/5 mb-5">
             <Shield className="w-8 h-8 text-[#0071e3]" />
@@ -58,25 +72,23 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        {/* 登录卡片 */}
         <div className="bg-white rounded-3xl shadow-sm border border-black/5 p-8">
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* 邮箱 */}
             <div>
               <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
-                管理员邮箱
+                管理员账号
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="123456@qq.com"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="123456"
+                autoComplete="username"
                 className="w-full h-12 px-4 rounded-xl border border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f] placeholder-[#aeaeb2] text-sm focus:outline-none focus:ring-2 focus:ring-[#0071e3]/30 focus:border-[#0071e3] transition-all duration-200"
                 required
               />
             </div>
 
-            {/* 密码 */}
             <div>
               <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
                 密码
@@ -85,8 +97,9 @@ export default function AdminLoginPage() {
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="输入管理员密码"
+                  autoComplete="current-password"
                   className="w-full h-12 px-4 pr-12 rounded-xl border border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f] placeholder-[#aeaeb2] text-sm focus:outline-none focus:ring-2 focus:ring-[#0071e3]/30 focus:border-[#0071e3] transition-all duration-200"
                   required
                 />
@@ -100,7 +113,6 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* 错误提示 */}
             {error && (
               <motion.p
                 initial={{ opacity: 0, y: -8 }}
@@ -111,7 +123,6 @@ export default function AdminLoginPage() {
               </motion.p>
             )}
 
-            {/* 登录按钮 */}
             <button
               type="submit"
               disabled={loading}
@@ -128,9 +139,8 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* 底部提示 */}
           <p className="text-center text-xs text-[#aeaeb2] mt-6">
-            此区域仅限授权管理员访问
+            此区域仅限授权管理员访问 · 演示账号 123456 / 123456
           </p>
         </div>
       </motion.div>

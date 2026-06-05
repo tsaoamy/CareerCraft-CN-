@@ -1,7 +1,8 @@
 "use client";
 
 import type { InterviewQuickMode, InterviewCategory, JobCategory } from "@/types/interview";
-import { getQuestionsByCategory, getQuestionsByJob } from "@/data/interview-questions";
+import { getQuestionsByCategory, getQuestionsByJob, filterQuestionsByLanguage } from "@/data/interview-questions";
+import type { InterviewLanguage } from "@/data/interview-prep";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -37,9 +38,10 @@ const ALL_JOBS: { value: JobCategory | "通用"; label: string }[] = [
 interface CustomSetupProps {
   onConfirm: (questionIds: string[]) => void;
   onBack: () => void;
+  language?: InterviewLanguage;
 }
 
-export function CustomSetup({ onConfirm, onBack }: CustomSetupProps) {
+export function CustomSetup({ onConfirm, onBack, language = "zh" }: CustomSetupProps) {
   const [selectedCats, setSelectedCats] = useState<Set<InterviewCategory>>(new Set());
   const [selectedJob, setSelectedJob] = useState<JobCategory | "通用">("通用");
   const [questionCount, setQuestionCount] = useState(5);
@@ -61,9 +63,10 @@ export function CustomSetup({ onConfirm, onBack }: CustomSetupProps) {
       pool = pool.filter((q) => cats.includes(q.category));
     }
 
+    pool = filterQuestionsByLanguage(pool, language);
+
     if (pool.length === 0) {
-      // fallback: use all
-      pool = getQuestionsByJob("通用" as JobCategory);
+      pool = filterQuestionsByLanguage(getQuestionsByJob("通用" as JobCategory), language);
     }
 
     const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, questionCount);
@@ -76,6 +79,7 @@ export function CustomSetup({ onConfirm, onBack }: CustomSetupProps) {
       ? getQuestionsByCategory("自我介绍")
       : getQuestionsByJob(selectedJob as JobCategory);
     if (cats) pool = pool.filter((q) => cats.includes(q.category));
+    pool = filterQuestionsByLanguage(pool, language);
     return pool.length;
   })();
 

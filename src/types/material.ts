@@ -11,6 +11,7 @@ export interface Material {
   id: string;
   title: string;
   category: MaterialCategory;
+  dateRange?: string;
   rawContent: string;
   star: STAR;
   tags: string[];
@@ -23,6 +24,7 @@ export interface Material {
 export interface MaterialFormData {
   title: string;
   category: MaterialCategory;
+  dateRange?: string;
   rawContent: string;
   star: STAR;
   tags: string[];
@@ -36,14 +38,6 @@ export const CATEGORY_LABELS: Record<MaterialCategory, string> = {
   competition: '竞赛经历',
   research: '科研经历',
   campus: '校园经历',
-};
-
-export const CATEGORY_ICONS: Record<MaterialCategory, string> = {
-  internship: '💼',
-  project: '🚀',
-  competition: '🏆',
-  research: '🔬',
-  campus: '🎓',
 };
 
 export const CATEGORY_COLORS: Record<MaterialCategory, string> = {

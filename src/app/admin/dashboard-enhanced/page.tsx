@@ -11,6 +11,7 @@ import {
   Brain, DollarSign, RefreshCw, Filter
 } from 'lucide-react';
 import EChartsReact from 'echarts-for-react';
+import { AUTH_TOKEN_KEY } from '@/lib/auth/constants';
 
 interface DashboardData {
   summary: {
@@ -44,7 +45,7 @@ export default function EnhancedDashboardPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('careercraft_token_v2');
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
       const res = await fetch(`/api/dashboard?range=${range}`, {
         headers: { Authorization: `Bearer ${token}` },
       });

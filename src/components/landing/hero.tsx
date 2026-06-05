@@ -1,185 +1,114 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight, Sparkles, FileText, Search, MessageCircle, BarChart3, Users, Zap } from "lucide-react";
-import { useRef, useEffect, useState } from "react";
-
-function AnimatedStat({ value, label, suffix = "" }: { value: number; label: string; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-  const started = useRef(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true;
-          const start = performance.now();
-          const duration = 1800;
-          const tick = (now: number) => {
-            const p = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - p, 3);
-            setCount(Math.round(eased * value));
-            if (p < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        }
-      },
-      { threshold: 0.3 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [value]);
-
-  return (
-    <div ref={ref} className="text-center">
-      <div className="text-[40px] md:text-[48px] font-bold tracking-tight gradient-text-static leading-none">
-        {count}{suffix}
-      </div>
-      <div className="text-[13px] text-apple-text-secondary mt-2 font-medium">{label}</div>
-    </div>
-  );
-}
+import { ArrowRight, ChevronDown } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { BrandButton } from "@/components/design-system/brand-button";
+import { Stagger, StaggerItem, easeBrand } from "@/components/design-system/motion";
+import { useLocale } from "@/lib/i18n/locale-context";
+import { HeroMiddleware, HeroWorkflowPanel } from "./hero-visuals";
+import { HeroHeadline } from "./hero-headline";
 
 export function Hero() {
+  const { t } = useLocale();
+  const { scrollY } = useScroll();
+  const contentOpacity = useTransform(scrollY, [0, 420], [1, 0]);
+  const contentY = useTransform(scrollY, [0, 420], [0, -40]);
+
   return (
-    <section className="relative overflow-hidden">
-      {/* Decorative grid pattern */}
-      <div className="absolute inset-0 -z-10 grid-pattern opacity-60" />
-
-      {/* Animated background orbs */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-[-15%] left-[-8%] w-[700px] h-[700px] rounded-full bg-gradient-to-br from-[#0071e3]/15 to-[#5ac8fa]/8 blur-[140px] animate-float" />
-        <div
-          className="absolute bottom-[-15%] right-[-8%] w-[600px] h-[600px] rounded-full bg-gradient-to-tl from-[#8944ab]/15 to-[#bf5af2]/8 blur-[140px] animate-float"
-          style={{ animationDelay: "-3s" }}
-        />
-        <div
-          className="absolute top-[35%] left-[45%] w-[350px] h-[350px] rounded-full bg-[#34c759]/8 blur-[100px] animate-float-slow"
-          style={{ animationDelay: "-5s" }}
-        />
-        <div
-          className="absolute top-[60%] left-[15%] w-[250px] h-[250px] rounded-full bg-[#ff9f0a]/6 blur-[80px] animate-float"
-          style={{ animationDelay: "-7s" }}
-        />
+    <section className="brand-hero brand-hero-noise relative flex flex-col overflow-hidden">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <div className="absolute top-[5%] right-[5%] w-[480px] h-[480px] rounded-full bg-volt/[0.05] blur-[100px]" />
+        <div className="absolute top-[35%] left-[40%] w-[320px] h-[320px] rounded-full bg-volt/[0.03] blur-[80px]" />
+        <div className="absolute bottom-[5%] left-[-5%] w-[400px] h-[400px] rounded-full bg-[var(--highlight-secondary)] blur-[90px]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-5 pt-24 pb-16 md:pt-40 md:pb-28 text-center">
-        {/* Tagline */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card mb-10 animate-fade-in-up">
-          <Sparkles className="w-3.5 h-3.5 text-apple-blue" />
-          <span className="text-[13px] font-medium text-apple-text dark:text-white">
-            AI 驱动 &middot; 中文优化 &middot; 智能求职助手
-          </span>
-        </div>
-
-        {/* Hero heading */}
-        <h1 className="text-hero mb-8 animate-fade-in-up delay-100">
-          <span className="block text-apple-text dark:text-white">
-            一个职业档案，
-          </span>
-          <span className="gradient-text">多岗位智能适配</span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="text-hero-sub text-apple-text-secondary max-w-[640px] mx-auto mb-12 animate-fade-in-up delay-200">
-          只需录入一次经历，AI 自动为每个岗位生成专属简历。
-          告别重复改简历的痛苦，让求职效率提升 10 倍。
-        </p>
-
-        {/* CTA buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 animate-fade-in-up delay-300">
-          <Link
-            href="/register"
-            className="group inline-flex items-center gap-2 h-[56px] px-9 rounded-full bg-apple-blue text-white text-[17px] font-medium hover:bg-[#0077ed] shadow-[0_4px_20px_rgba(0,113,227,0.4)] hover:shadow-[0_6px_28px_rgba(0,113,227,0.5)] transition-all duration-300 active:scale-[0.97]"
-          >
-            免费开始使用
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 h-[56px] px-9 rounded-full glass-btn text-[17px] text-apple-text dark:text-white font-medium active:scale-[0.97]"
-          >
-            查看演示
-          </Link>
-        </div>
-
-        {/* Stats with animated counters */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-[760px] mx-auto animate-fade-in-up delay-400">
-          <AnimatedStat value={10} suffix="x" label="效率提升" />
-          <AnimatedStat value={83} suffix="%" label="平均匹配度" />
-          <AnimatedStat value={5} label="分钟生成简历" />
-          <AnimatedStat value={100} suffix="+" label="岗位类型支持" />
-        </div>
-      </div>
-
-      {/* Feature cards grid */}
-      <div className="max-w-7xl mx-auto px-5 pb-16 md:pb-28">
-        {/* Section label */}
-        <div className="text-center mb-12">
-          <span className="apple-badge mb-4">核心功能</span>
-          <h2 className="text-[28px] md:text-[36px] font-bold tracking-tight text-apple-text dark:text-white mt-4">
-            AI 赋能的<span className="gradient-text-static">求职全流程</span>
-          </h2>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-5">
-          {[
-            {
-              icon: FileText,
-              title: "职业素材库",
-              desc: "一次录入经历，永久保存。AI 自动拆解 STAR 格式，让每段经历都有结构，随时调用。",
-              color: "from-[#0071e3]/10 to-[#0071e3]/5",
-              iconColor: "text-apple-blue",
-              iconBg: "bg-[#e8f4fd] dark:bg-[#003366]",
-              tag: "结构化存储",
-            },
-            {
-              icon: Search,
-              title: "JD 智能解析",
-              desc: "粘贴岗位描述，秒级分析核心技能、关键需求和匹配度，精准定位你的优劣势。",
-              color: "from-[#8944ab]/10 to-[#8944ab]/5",
-              iconColor: "text-apple-purple",
-              iconBg: "bg-[#f4f1fa] dark:bg-[#2d1445]",
-              tag: "AI 分析",
-            },
-            {
-              icon: MessageCircle,
-              title: "AI 面试模拟",
-              desc: "基于 JD 和简历自动生成针对性面试问题，模拟真实面试场景并智能评分反馈。",
-              color: "from-[#34c759]/10 to-[#34c759]/5",
-              iconColor: "text-apple-green",
-              iconBg: "bg-[#e8f8ee] dark:bg-[#0a3622]",
-              tag: "实战演练",
-            },
-          ].map((feat, i) => (
-            <div
-              key={feat.title}
-              className="apple-card spotlight-card p-8 animate-fade-in-up group"
-              style={{ animationDelay: `${0.5 + i * 0.1}s` }}
-            >
-              <div className="flex items-start justify-between mb-5">
-                <div
-                  className={`w-12 h-12 rounded-2xl ${feat.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
-                >
-                  <feat.icon className={`w-6 h-6 ${feat.iconColor}`} />
-                </div>
-                <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#f5f5f7] dark:bg-[#2c2c2e] text-apple-text-secondary font-medium">
-                  {feat.tag}
-                </span>
+      <motion.div
+        style={{ opacity: contentOpacity, y: contentY }}
+        className="brand-editorial-width relative z-10 w-full flex-1 flex flex-col justify-center pt-[72px] pb-20 md:pt-24 md:pb-24 lg:pt-28 lg:pb-28"
+      >
+        <Stagger className="hero-three-col">
+          {/* Left — narrative + CTA */}
+          <div className="hero-col-left text-center lg:text-left min-w-0">
+            <StaggerItem>
+              <div className="inline-flex items-center gap-2 mb-5 md:mb-6 px-4 py-2 rounded-pill border border-hairline bg-[var(--card-bg)] text-caption-sm text-stone">
+                <span className="w-1.5 h-1.5 rounded-full bg-volt animate-pulse" />
+                {t.hero.badge}
               </div>
-              <h3 className="text-[19px] font-semibold tracking-tight text-apple-text dark:text-white mb-2">
-                {feat.title}
-              </h3>
-              <p className="text-[14px] text-apple-text-secondary leading-relaxed">
-                {feat.desc}
+            </StaggerItem>
+
+            <StaggerItem>
+              <HeroHeadline />
+            </StaggerItem>
+
+            <StaggerItem>
+              <p className="text-body-md text-stone max-w-[440px] mx-auto lg:mx-0 mb-7 md:mb-8 leading-relaxed">
+                {t.hero.subtitle}
               </p>
+            </StaggerItem>
+
+            <StaggerItem>
+              <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-3 mb-5">
+                <BrandButton href="/register" variant="volt" size="lg">
+                  {t.hero.ctaPrimary}
+                  <ArrowRight className="w-4 h-4" />
+                </BrandButton>
+                <BrandButton href="/talent/matching" variant="outline" size="lg">
+                  {t.hero.ctaSecondary}
+                </BrandButton>
+              </div>
+            </StaggerItem>
+
+            <StaggerItem>
+              <p className="text-caption-sm text-stone flex items-center justify-center lg:justify-start gap-2">
+                {t.hero.trust}
+              </p>
+            </StaggerItem>
+          </div>
+
+          {/* Middle — floating hub (desktop lg+) */}
+          <StaggerItem className="hero-col-mid min-w-0">
+            <HeroMiddleware />
+          </StaggerItem>
+
+          {/* Right — workflow panel */}
+          <StaggerItem className="hero-col-right min-w-0">
+            <HeroWorkflowPanel />
+          </StaggerItem>
+        </Stagger>
+
+        {/* Mobile / tablet metrics strip */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3, duration: 0.55, ease: easeBrand }}
+          className="lg:hidden mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3 py-6 border-t border-hairline-soft"
+        >
+          {[
+            { v: "10×", l: t.hero.stat1 },
+            { v: "83%", l: t.hero.stat2 },
+            { v: "5m", l: t.hero.stat3 },
+            { v: "100+", l: t.hero.stat4 },
+          ].map(({ v, l }) => (
+            <div key={l} className="text-center p-3 rounded-lg bg-[var(--card-bg)] border border-hairline-soft">
+              <p className="font-display text-2xl text-ink tabular-nums">{v}</p>
+              <p className="text-[11px] text-stone mt-1 leading-snug">{l}</p>
             </div>
           ))}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
+
+      <motion.a
+        href="#value"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1, duration: 0.6 }}
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-stone hover:text-volt transition-colors z-20"
+        aria-label="Scroll"
+      >
+        <span className="text-caption-sm uppercase tracking-widest">Explore</span>
+        <ChevronDown className="w-5 h-5 animate-scroll-hint" />
+      </motion.a>
     </section>
   );
 }

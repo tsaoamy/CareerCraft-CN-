@@ -3,44 +3,47 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AdminSidebar } from '@/components/admin/sidebar';
-import { AdminAuthProvider } from '@/lib/admin/admin-auth-context';
+import { AdminAuthProvider, useAdminAuth } from '@/lib/admin/admin-auth-context';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAdminAuth();
 
-  // 登录页面不需要侧边栏
   const isLoginPage = pathname === '/admin/login' || pathname === '/admin';
 
-  // 自动设置管理员凭据（免登录模式）
   useEffect(() => {
-    localStorage.setItem('admin_token', 'admin_jwt_mock_token');
-    document.cookie = 'admin_session=valid; path=/; max-age=86400';
-  }, []);
-
-  // 登录守卫（已自动通过）
-  useEffect(() => {
-    if (!isLoginPage) {
-      const token = localStorage.getItem('admin_token');
-      const cookie = document.cookie.includes('admin_session=valid');
-      if (!token && !cookie) {
-        router.push('/admin/login');
-      }
+    if (!isLoginPage && !isLoading && !isAuthenticated) {
+      router.replace('/admin/login');
     }
-  }, [pathname, isLoginPage, router]);
+  }, [isLoginPage, isLoading, isAuthenticated, router]);
 
   if (isLoginPage) {
-    return <AdminAuthProvider>{children}</AdminAuthProvider>;
+    return <>{children}</>;
+  }
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7]">
+        <div className="w-8 h-8 border-2 border-[#0071e3]/30 border-t-[#0071e3] rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
+    <div className="min-h-screen bg-[#f5f5f7] flex">
+      <AdminSidebar />
+      <main className="flex-1 ml-64 min-h-screen overflow-x-hidden">
+        <div className="p-8 pt-6">{children}</div>
+      </main>
+    </div>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
     <AdminAuthProvider>
-      <div className="min-h-screen bg-[#f5f5f7] flex">
-        <AdminSidebar />
-        <main className="flex-1 ml-64 min-h-screen overflow-x-hidden">
-          <div className="p-8 pt-6">{children}</div>
-        </main>
-      </div>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
     </AdminAuthProvider>
   );
 }

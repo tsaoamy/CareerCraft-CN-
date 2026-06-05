@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus, Sparkles, Search, Filter, Calendar } from 'lucide-react';
 import { AdminSkeleton } from '@/components/admin/skeleton';
 import type { AIHeatmapData, HeatmapQuestion } from '@/lib/ai/types';
+import { apiFetch } from '@/lib/api-client';
 
 const categoryColors: Record<string, string> = {
   '简历优化': '#0071e3',
@@ -20,10 +21,9 @@ export default function AIHeatmapPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetch('/api/ai/analytics?type=heatmap')
-      .then((r) => r.json())
+    apiFetch<AIHeatmapData>('/api/ai/analytics?type=heatmap')
       .then((res) => {
-        if (res.success) setData(res.data);
+        if (res.success && res.data) setData(res.data);
       })
       .finally(() => setLoading(false));
   }, []);

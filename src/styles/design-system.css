@@ -1,0 +1,178 @@
+/* ============================================================
+   CareerCraft — Layout, typography, AI surfaces, components
+   Plain CSS (no @layer) — imported before @tailwind in globals.css
+   ============================================================ */
+
+/* Typography base */
+body {
+  font-family: var(--font-geist-sans), Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.011em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+/* Container — max 1280px */
+.brand-editorial-width {
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(1rem, 4vw, 2rem);
+  padding-right: clamp(1rem, 4vw, 2rem);
+}
+
+.brand-section {
+  padding: clamp(5rem, 10vw, 7.5rem) 0;
+}
+
+/* Hero typography — editorial hierarchy */
+.hero-headline-lead {
+  font-size: clamp(1.125rem, 2.2vw, 1.375rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.hero-headline-emphasis {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.hero-headline-closing {
+  font-size: clamp(2.75rem, 6.5vw, 4.5rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--text-primary);
+  border-top: none;
+  padding-top: 0.25em;
+}
+
+.hero-headline-closing .text-accent {
+  color: var(--accent);
+}
+
+/* Navbar — premium 72px rhythm */
+.workspace-toolbar-shell {
+  padding: 0 1rem;
+  height: 4.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  transition:
+    background var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease;
+}
+
+.workspace-toolbar-shell-active {
+  background: var(--toolbar-bg-active);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-color: var(--toolbar-border);
+  box-shadow: var(--shadow-card);
+}
+
+.workspace-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  min-width: 2rem;
+  padding: 0 0.5rem;
+  color: var(--text-muted);
+  border-radius: 8px;
+  transition:
+    color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.workspace-action-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+/* Cards */
+.ds-card {
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease;
+}
+
+.ds-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-float);
+}
+
+/* Forms — overrides applied via specificity alongside .system-input in globals */
+.feature-field {
+  border-radius: var(--radius-input) !important;
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+  box-shadow: none;
+}
+
+.feature-field:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-default));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--surface-3);
+}
+
+/* AI assistant surfaces */
+.ai-surface {
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
+}
+
+.ai-state-thinking { background: var(--ai-thinking); }
+.ai-state-reading { background: var(--ai-reading); }
+.ai-state-editing { background: var(--ai-editing); }
+.ai-state-searching { background: var(--ai-searching); }
+.ai-state-completed { background: var(--ai-completed); }
+
+.ai-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+}
+
+.ai-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: ai-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-indicator-dot { animation: none; opacity: 0.8; }
+}

@@ -1,12 +1,15 @@
 "use client";
 
 // ==========================================
-// Admin Auth Context — 独立的权限管理系统
-// 与用户认证完全分离
+// Admin Auth Context — 基于 JWT 的管理员会话
+// 与用户端共用 careercraft_token_v2，通过 /api/auth/me 校验 admin 角色
 // ==========================================
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { UserRole } from "@/types/admin";
+import { AUTH_TOKEN_KEY, ADMIN_SESSION_COOKIE } from "@/lib/auth/constants";
+import { isAdminRole } from "@/lib/auth/rbac";
 
 interface AdminAuthState {
   isAuthenticated: boolean;
@@ -16,17 +19,29 @@ interface AdminAuthState {
 }
 
 interface AdminAuthContextType extends AdminAuthState {
-  login: (password: string) => Promise<boolean>;
   logout: () => void;
   checkAccess: () => boolean;
+  refreshSession: () => Promise<void>;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
-const ADMIN_SESSION_KEY = "careercraft_admin_session";
-const ADMIN_PASSWORD = "123456"; // 生产环境使用 JWT + bcrypt
+function setAdminSessionCookie() {
+  document.cookie = `${ADMIN_SESSION_COOKIE}=1; path=/; max-age=86400; SameSite=Lax`;
+}
+
+function clearAdminSessionCookie() {
+  document.cookie = `${ADMIN_SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+  document.cookie = "admin_session=; path=/; max-age=0; SameSite=Lax";
+}
+
+function clearLegacyMockTokens() {
+  localStorage.removeItem("admin_token");
+  localStorage.removeItem("careercraft_admin_session");
+}
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [state, setState] = useState<AdminAuthState>({
     isAuthenticated: false,
     isLoading: true,
@@ -34,64 +49,65 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     role: null,
   });
 
-  // 恢复会话
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ADMIN_SESSION_KEY);
-      if (saved) {
-        const session = JSON.parse(saved);
-        if (session.expiresAt && new Date(session.expiresAt).getTime() > Date.now()) {
-          setState({
-            isAuthenticated: true,
-            isLoading: false,
-            adminName: session.adminName || "Admin",
-            role: session.role || "admin",
-          });
-          return;
-        }
-      }
-    } catch {
-      // ignore
+  const refreshSession = useCallback(async () => {
+    clearLegacyMockTokens();
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+      setState({ isAuthenticated: false, isLoading: false, adminName: "", role: null });
+      return;
     }
-    setState((prev) => ({ ...prev, isLoading: false }));
-  }, []);
 
-  const login = useCallback(async (password: string): Promise<boolean> => {
-    // 生产环境：JWT 验证
-    if (password === ADMIN_PASSWORD) {
-      const session = {
-        adminName: "CareerCraft Admin",
-        role: "super_admin" as UserRole,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      };
-      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success || !data.data?.user) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        clearAdminSessionCookie();
+        setState({ isAuthenticated: false, isLoading: false, adminName: "", role: null });
+        return;
+      }
+
+      const user = data.data.user;
+      if (!isAdminRole(user.role)) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        clearAdminSessionCookie();
+        setState({ isAuthenticated: false, isLoading: false, adminName: "", role: null });
+        return;
+      }
+
+      setAdminSessionCookie();
       setState({
         isAuthenticated: true,
         isLoading: false,
-        adminName: session.adminName,
-        role: session.role,
+        adminName: user.nickname || user.username || "Admin",
+        role: user.role as UserRole,
       });
-      return true;
+    } catch {
+      setState({ isAuthenticated: false, isLoading: false, adminName: "", role: null });
     }
-    return false;
   }, []);
 
+  useEffect(() => {
+    void refreshSession();
+  }, [refreshSession]);
+
   const logout = useCallback(() => {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    setState({
-      isAuthenticated: false,
-      isLoading: false,
-      adminName: "",
-      role: null,
-    });
-  }, []);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    clearLegacyMockTokens();
+    clearAdminSessionCookie();
+    setState({ isAuthenticated: false, isLoading: false, adminName: "", role: null });
+    router.push("/admin/login");
+  }, [router]);
 
   const checkAccess = useCallback(() => {
     return state.isAuthenticated && (state.role === "admin" || state.role === "super_admin");
   }, [state.isAuthenticated, state.role]);
 
   return (
-    <AdminAuthContext.Provider value={{ ...state, login, logout, checkAccess }}>
+    <AdminAuthContext.Provider value={{ ...state, logout, checkAccess, refreshSession }}>
       {children}
     </AdminAuthContext.Provider>
   );
@@ -101,4 +117,11 @@ export function useAdminAuth() {
   const ctx = useContext(AdminAuthContext);
   if (!ctx) throw new Error("useAdminAuth must be used within AdminAuthProvider");
   return ctx;
+}
+
+/** 管理员登录成功后写入 token 与 cookie */
+export function persistAdminLogin(token: string) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  clearLegacyMockTokens();
+  setAdminSessionCookie();
 }

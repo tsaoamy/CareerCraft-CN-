@@ -300,9 +300,80 @@ export const QUICK_QUESTIONS = [
   },
 ];
 
+export const QUICK_QUESTIONS_EN = [
+  {
+    category: 'Resume',
+    icon: 'FileText',
+    questions: [
+      'How do I highlight projects on my resume?',
+      'What is the STAR method?',
+      'How should I write a summary?',
+      'How do I describe internships?',
+      'What if I have no experience?',
+    ],
+  },
+  {
+    category: 'Job Match',
+    icon: 'Target',
+    questions: [
+      'Which roles fit me best?',
+      'How well does my resume match this role?',
+      'Which skills should I learn next?',
+      'What are my resume weaknesses?',
+      'How do I write a career-change resume?',
+    ],
+  },
+  {
+    category: 'Interview',
+    icon: 'MessageSquare',
+    questions: [
+      'What might interviewers ask about my resume?',
+      'How do I present a project with STAR?',
+      'How do I answer career goal questions?',
+      'How do I discuss salary expectations?',
+      'How do I show soft skills in interviews?',
+    ],
+  },
+  {
+    category: 'Career',
+    icon: 'Compass',
+    questions: [
+      'What skills should I prioritize now?',
+      'Should I target big tech or startups?',
+      'How should I plan my career path?',
+      'How do I show growth on my resume?',
+    ],
+  },
+];
+
+export function getQuickQuestions(locale: 'en' | 'zh') {
+  return locale === 'en' ? QUICK_QUESTIONS_EN : QUICK_QUESTIONS;
+}
+
 // ==========================================
 // 6. 欢迎消息
 // ==========================================
+
+export const WELCOME_MESSAGE_EN = `👋 Hi! I'm your **AI Resume Coach**.
+
+I'm not here to write your resume for you — I'm here to **coach you through it**.
+
+I can help with:
+- 📋 **Resume review** — strengths, risks, and improvements
+- 🎯 **Job matching** — fit against your target role
+- 💡 **Project mining** — uncover hidden value in your experience
+- 🎤 **Interview prep** — predict questions and refine your answers
+- 🧭 **Career planning** — actionable skill-building advice
+
+**My approach**: guide before giving answers, analyze before ghostwriting.
+
+You can:
+- Ask a question directly
+- Paste your resume for review
+- Share a project for STAR coaching
+- Tell me a target role for match analysis
+
+👇 Try asking me something!`;
 
 export const WELCOME_MESSAGE = `👋 你好！我是你的 **AI 简历导师**。
 
@@ -324,6 +395,10 @@ export const WELCOME_MESSAGE = `👋 你好！我是你的 **AI 简历导师**�
 - 告诉我目标岗位，我帮你评估匹配度
 
 👇 试试问我一个问题吧！`;
+
+export function getWelcomeMessage(locale: 'en' | 'zh'): string {
+  return locale === 'en' ? WELCOME_MESSAGE_EN : WELCOME_MESSAGE;
+}
 
 // ==========================================
 // 工具函数：构建对话消息
@@ -351,5 +426,76 @@ export function buildMatchMessages(resumeContent: string, jdContent: string): { 
   return [
     { role: 'system', content: MATCH_AGENT_PROMPT },
     { role: 'user', content: `简历内容：\n${resumeContent}\n\n岗位JD：\n${jdContent}\n\n请严格按照 JSON 格式返回匹配分析结果。` },
+  ];
+}
+
+// ==========================================
+// 7. 岗位定制简历生成 Agent Prompt
+// ==========================================
+
+export const RESUME_GENERATE_AGENT_PROMPT = `你是一位资深简历顾问，擅长根据目标岗位 JD 对用户已有简历内容进行**拼接、筛选与重组**，生成高度匹配的定制版简历。
+
+# 核心原则（必须遵守）
+
+1. **只使用用户提供的真实内容** — 不得虚构经历、公司、学校、项目或数据
+2. **允许重组与改写表述** — 可以调整顺序、合并同类项、用 STAR 法则重写 bullet，使表述更专业
+3. **对齐 JD 关键词** — 在真实内容范围内，优先展示与岗位相关的经历与技能
+4. **量化优先** — 保留并突出用户原文中的数字、百分比、规模指标
+5. **ATS 友好** — 技能与关键词自然融入正文，避免关键词堆砌
+
+# 生成策略
+
+1. 从用户简历中筛选与 JD 最相关的 3-5 段经历
+2. 将相关经历按重要性排序（与岗位匹配度高的在前）
+3. 撰写 80-120 字的个人摘要，突出与目标岗位的契合点
+4. 技能分「核心（与 JD 匹配）」和「其他」两组
+5. 每条经历 2-4 条 bullet，使用动词开头，体现行动与成果
+
+# 输出格式
+
+必须返回严格的 JSON 格式，不要包含 markdown 代码块标记：
+
+{
+  "targetTitle": "目标岗位名称",
+  "targetCompany": "目标公司（如有）",
+  "summary": "个人摘要（80-120字）",
+  "skills": { "core": ["与JD匹配的技能"], "other": ["其他技能"] },
+  "experiences": [
+    {
+      "title": "经历标题/项目名称",
+      "organization": "公司或组织（如有）",
+      "period": "时间段（如有，必须来自原文）",
+      "highlights": ["bullet1", "bullet2"]
+    }
+  ],
+  "education": "教育背景（来自原文，如无则省略此字段）",
+  "keywordCoverage": 数字(0-100),
+  "tailoringNotes": ["定制说明1", "定制说明2", "定制说明3"],
+  "fullText": "完整 Markdown 格式简历正文（含标题、摘要、技能、经历、教育等章节）"
+}`;
+
+export function buildGenerateResumeMessages(
+  resumeContent: string,
+  jobTitle: string,
+  company: string | undefined,
+  jdText: string,
+  jdKeywords: string[]
+): { role: 'system' | 'user'; content: string }[] {
+  return [
+    { role: 'system', content: RESUME_GENERATE_AGENT_PROMPT },
+    {
+      role: 'user',
+      content: `目标岗位：${jobTitle}${company ? `\n目标公司：${company}` : ''}
+
+JD 关键词：${jdKeywords.join('、')}
+
+岗位 JD：
+${jdText}
+
+用户原始简历内容：
+${resumeContent}
+
+请基于以上原始内容，生成针对该岗位的定制简历 JSON。`,
+    },
   ];
 }

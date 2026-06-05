@@ -1,4 +1,5 @@
 import { LegalHero } from "@/components/legal/legal-hero";
+import { OFFICIAL_EMAIL } from "@/lib/site-config";
 
 export const metadata = {
   title: "隐私政策 — CareerCraft",
@@ -107,7 +108,7 @@ export default function PrivacyPage() {
             <p>
               隐私相关咨询，请联系：<br />
               <a href="/contact" className="text-apple-blue hover:underline">联系我们</a> &nbsp;或 &nbsp;
-              <span className="text-apple-text dark:text-white">1759486723@qq.com</span>
+              <span className="text-apple-text dark:text-white">{OFFICIAL_EMAIL}</span>
             </p>
           </div>
         </div>

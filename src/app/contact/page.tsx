@@ -1,5 +1,6 @@
 import { LegalHero } from "@/components/legal/legal-hero";
 import { ContactForm } from "@/components/contact/contact-form";
+import { OFFICIAL_EMAIL } from "@/lib/site-config";
 
 export const metadata = {
   title: "联系我们 — CareerCraft",
@@ -27,7 +28,7 @@ export default function ContactPage() {
                   </svg>
                 ),
                 title: "邮件联系",
-                detail: "1759486723@qq.com",
+                detail: OFFICIAL_EMAIL,
                 desc: "一般咨询：24 小时内回复",
               },
               {
@@ -51,7 +52,7 @@ export default function ContactPage() {
                   </svg>
                 ),
                 title: "商务合作",
-                detail: "1759486723@qq.com",
+                detail: OFFICIAL_EMAIL,
                 desc: "企业合作 & 渠道拓展",
               },
             ].map((item) => (

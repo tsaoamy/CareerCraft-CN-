@@ -1,16 +1,5 @@
 import type { Material } from '@/types/material';
-
-// 常见技能/技术关键词库
-const TECH_SKILLS = [
-  'Python', 'Java', 'JavaScript', 'TypeScript', 'C++', 'Go', 'Rust', 'SQL', 'React', 'Vue', 'Angular',
-  'Node.js', 'Django', 'Spring', 'Docker', 'Kubernetes', 'AWS', 'Linux', 'Git', 'Redis', 'MongoDB',
-  'MySQL', 'PostgreSQL', 'GraphQL', 'REST API', '微服务', 'CI/CD', 'DevOps', '敏捷开发', 'Scrum',
-  '产品设计', '用户研究', '用户体验', '数据分析', '数据挖掘', '机器学习', '深度学习', 'NLP',
-  '计算机视觉', 'PyTorch', 'TensorFlow', 'A/B测试', 'PRD', '竞品分析', '需求管理', '项目管理',
-  '用户增长', '增长黑客', 'SEO', 'SEM', '内容运营', '社群运营', '新媒体运营', '品牌营销',
-  '财务分析', '风险控制', '合规', '风控建模', 'Tableau', 'Power BI', 'Excel', 'SPSS',
-  '沟通能力', '团队协作', '领导力', '问题解决', '批判性思维', '时间管理', '演讲能力',
-];
+import { computeMaterialMatch, extractKeywordsFromText } from './match-engine';
 
 const SKILL_CATEGORIES: Record<string, string[]> = {
   '前端': ['React', 'Vue', 'Angular', 'JavaScript', 'TypeScript', 'HTML', 'CSS', 'Webpack', 'Vite'],
@@ -38,14 +27,7 @@ export interface JDAnalysisResult {
 }
 
 function extractKeywords(text: string): string[] {
-  const found: string[] = [];
-  const lower = text.toLowerCase();
-  for (const skill of TECH_SKILLS) {
-    if (lower.includes(skill.toLowerCase())) {
-      found.push(skill);
-    }
-  }
-  return [...new Set(found)];
+  return extractKeywordsFromText(text);
 }
 
 function detectRole(jd: string): { title: string; level: string; industry: string } {
@@ -91,41 +73,11 @@ function calculateMatch(materials: Material[], requiredSkills: string[]): {
   gaps: string[];
   matched: Material[];
 } {
-  const allUserSkills = new Set<string>();
-  const matchedMaterials: Material[] = [];
-
-  for (const mat of materials) {
-    for (const skill of mat.skills) {
-      allUserSkills.add(skill.toLowerCase());
-    }
-  }
-
-  let matchedCount = 0;
-  const gaps: string[] = [];
-
-  for (const skill of requiredSkills) {
-    if (allUserSkills.has(skill.toLowerCase())) {
-      matchedCount++;
-    } else {
-      gaps.push(skill);
-    }
-  }
-
-  // Also find which materials match
-  for (const mat of materials) {
-    const matSkillLower = mat.skills.map(s => s.toLowerCase());
-    const hasMatch = requiredSkills.some(s => matSkillLower.includes(s.toLowerCase()));
-    if (hasMatch) matchedMaterials.push(mat);
-  }
-
-  const score = requiredSkills.length > 0
-    ? Math.round((matchedCount / requiredSkills.length) * 100)
-    : 60;
-
+  const result = computeMaterialMatch(materials, requiredSkills);
   return {
-    score: Math.min(score, 100),
-    gaps,
-    matched: matchedMaterials,
+    score: result.matchScore,
+    gaps: result.missingKeywords,
+    matched: result.matchedMaterials,
   };
 }
 

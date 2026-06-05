@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
         context: { resumeContent, jobDescription: jdContent },
         mode: 'match',
       });
-      return NextResponse.json(mockResult);
+      return NextResponse.json({ ...mockResult, meta: { source: 'offline' as const } });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, meta: { source: 'ai' as const } });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || '匹配分析失败' },

@@ -1,0 +1,214 @@
+/* ============================================================
+   CareerCraft — Premium AI Career Platform Design Tokens
+   Light: editorial warm neutral | Dark: soft layered cinema
+   ============================================================ */
+
+/* ---------- Light (default) ---------- */
+:root {
+  /* Surfaces */
+  --surface-1: #f7f7f4;
+  --surface-2: #fafaf7;
+  --surface-3: #ffffff;
+  --surface-4: #ffffff;
+
+  /* Typography */
+  --text-primary: #26251e;
+  --text-secondary: #5a5852;
+  --text-muted: #807d72;
+  --text-subtle: #a8a59c;
+  --text-inverse: #f5f3ee;
+
+  /* Brand accent — warm orange */
+  --accent: #f54e00;
+  --accent-hover: #d04200;
+  --accent-bright: #ff6224;
+  --accent-soft: rgba(245, 78, 0, 0.08);
+  --accent-glow: rgba(245, 78, 0, 0.16);
+  --accent-on: #ffffff;
+
+  /* Semantic */
+  --color-success: #1f8a65;
+  --color-success-soft: rgba(31, 138, 101, 0.1);
+  --color-error: #cf2d56;
+  --color-error-soft: rgba(207, 45, 86, 0.1);
+  --color-info: #2563eb;
+  --color-info-soft: rgba(37, 99, 235, 0.08);
+
+  /* Borders & elevation */
+  --border-subtle: #eceae4;
+  --border-default: #e6e5e0;
+  --border-strong: #d4d2cb;
+  --shadow-ambient: 0 1px 2px rgba(38, 37, 30, 0.04);
+  --shadow-card: 0 1px 2px rgba(38, 37, 30, 0.04), 0 4px 12px rgba(38, 37, 30, 0.04);
+  --shadow-float: 0 8px 24px rgba(38, 37, 30, 0.08);
+
+  /* Components */
+  --card-bg: var(--surface-3);
+  --card-bg-hover: var(--surface-3);
+  --card-border: var(--border-default);
+
+  --toolbar-bg: rgba(247, 247, 244, 0.72);
+  --toolbar-bg-active: rgba(255, 255, 255, 0.92);
+  --toolbar-border: var(--border-default);
+
+  --grain-opacity: 0.006;
+  --ambient-glow: rgba(245, 78, 0, 0.04);
+  --hero-panel-bg: rgba(255, 255, 255, 0.88);
+  --dropdown-bg: rgba(255, 255, 255, 0.96);
+  --overlay-scrim: rgba(38, 37, 30, 0.32);
+  --highlight-secondary: rgba(38, 37, 30, 0.03);
+
+  --solid-bg: #26251e;
+  --solid-fg: #f5f3ee;
+
+  /* Radius */
+  --radius-input: 10px;
+  --radius-button: 10px;
+  --radius-card: 16px;
+  --radius-panel: 20px;
+  --radius-pill: 9999px;
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 250ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* AI workflow states (AI surfaces only) */
+  --ai-thinking: #ffd6c2;
+  --ai-reading: #c8dcff;
+  --ai-editing: #ddd4ff;
+  --ai-searching: #c8f0e4;
+  --ai-completed: #f5e6b8;
+
+  /* Chip selection */
+  --chip-bg: transparent;
+  --chip-border: var(--border-default);
+  --chip-text: var(--text-secondary);
+  --chip-hover-bg: rgba(245, 78, 0, 0.06);
+  --chip-selected-bg: rgba(245, 78, 0, 0.12);
+  --chip-selected-border: rgba(245, 78, 0, 0.24);
+  --chip-selected-text: #f54e00;
+
+  /* Legacy aliases */
+  --brand-ink: var(--text-primary);
+  --brand-canvas: var(--surface-3);
+  --brand-cloud: var(--surface-1);
+  --brand-volt: var(--accent);
+  --brand-mute: var(--text-muted);
+  --brand-hairline: var(--border-default);
+  --brand-dark: var(--surface-1);
+  --brand-dark-elevated: var(--surface-2);
+
+  --apple-bg: var(--surface-1);
+  --apple-card: var(--surface-3);
+  --apple-text: var(--text-primary);
+  --apple-text-secondary: var(--text-muted);
+  --apple-border: var(--border-default);
+}
+
+/* ---------- Dark ---------- */
+.dark {
+  --surface-1: #111315;
+  --surface-2: #17191c;
+  --surface-3: #1d2024;
+  --surface-4: #23272c;
+
+  --text-primary: #f5f3ee;
+  --text-secondary: #c8c2b8;
+  --text-muted: #8d887f;
+  --text-subtle: #6b665e;
+  --text-inverse: #26251e;
+
+  --accent: #ff6224;
+  --accent-hover: #ff7a45;
+  --accent-bright: #ff8a5c;
+  --accent-soft: rgba(255, 98, 36, 0.12);
+  --accent-glow: rgba(255, 98, 36, 0.22);
+  --accent-on: #ffffff;
+
+  --color-success: #36b37e;
+  --color-success-soft: rgba(54, 179, 126, 0.12);
+  --color-error: #ff5c7a;
+  --color-error-soft: rgba(255, 92, 122, 0.12);
+  --color-info: #6b9bff;
+  --color-info-soft: rgba(107, 155, 255, 0.12);
+
+  --border-subtle: #22262b;
+  --border-default: #2b3036;
+  --border-strong: #363c44;
+  --shadow-ambient: 0 2px 8px rgba(0, 0, 0, 0.24);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.28);
+  --shadow-float: 0 8px 32px rgba(0, 0, 0, 0.36);
+
+  --card-bg: var(--surface-3);
+  --card-bg-hover: var(--surface-4);
+  --card-border: var(--border-default);
+
+  --toolbar-bg: rgba(17, 19, 21, 0.65);
+  --toolbar-bg-active: rgba(29, 32, 36, 0.88);
+  --toolbar-border: var(--border-default);
+
+  --grain-opacity: 0.012;
+  --ambient-glow: rgba(255, 98, 36, 0.05);
+  --hero-panel-bg: rgba(29, 32, 36, 0.92);
+  --dropdown-bg: rgba(35, 39, 44, 0.96);
+  --overlay-scrim: rgba(0, 0, 0, 0.52);
+  --highlight-secondary: rgba(255, 255, 255, 0.03);
+
+  --solid-bg: #23272c;
+  --solid-fg: #f5f3ee;
+
+  --ai-thinking: rgba(255, 180, 140, 0.18);
+  --ai-reading: rgba(140, 180, 255, 0.16);
+  --ai-editing: rgba(180, 160, 255, 0.16);
+  --ai-searching: rgba(120, 220, 180, 0.14);
+  --ai-completed: rgba(240, 210, 120, 0.14);
+
+  --chip-hover-bg: rgba(255, 98, 36, 0.08);
+  --chip-selected-bg: rgba(255, 98, 36, 0.16);
+  --chip-selected-border: rgba(255, 98, 36, 0.28);
+  --chip-selected-text: #ff9a6b;
+
+  --brand-dark: var(--surface-1);
+  --brand-dark-elevated: var(--surface-2);
+
+  --apple-bg: var(--surface-1);
+  --apple-card: var(--surface-3);
+  --apple-text: var(--text-primary);
+  --apple-text-secondary: var(--text-muted);
+  --apple-border: var(--border-default);
+}
+
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 0.35s var(--ease-out),
+    color 0.3s var(--ease-out),
+    border-color 0.3s ease,
+    box-shadow 0.35s ease,
+    fill 0.25s ease,
+    stroke 0.25s ease !important;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: none !important;
+  }
+}

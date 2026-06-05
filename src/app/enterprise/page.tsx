@@ -11,6 +11,7 @@ import {
   Award, MessageSquare, Download, BarChart3,
   ChevronDown, Star, TrendingUp, Users, Building2
 } from 'lucide-react';
+import { AUTH_TOKEN_KEY } from '@/lib/auth/constants';
 
 interface ResumeResult {
   id: string;
@@ -44,7 +45,7 @@ export default function EnterprisePage() {
     if (!batchName || resumes.length === 0) return;
     setProcessing(true);
     try {
-      const token = localStorage.getItem('careercraft_token_v2');
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
       const res = await fetch('/api/enterprise', {
         method: 'POST',
         headers: {
@@ -154,7 +155,7 @@ export default function EnterprisePage() {
                   批量粘贴简历内容
                 </label>
                 <p className="text-xs text-gray-400 mb-3">
-                  每份简历用 "---" 分隔，支持最多100份
+                  每份简历用 &quot;---&quot; 分隔，支持最多100份
                 </p>
                 <textarea
                   onChange={handleFileUpload}

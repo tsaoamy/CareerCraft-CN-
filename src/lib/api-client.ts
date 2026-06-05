@@ -4,6 +4,7 @@
  */
 
 import { SafeUser } from '@/lib/db/schema';
+import { AUTH_TOKEN_KEY } from '@/lib/auth/constants';
 
 interface ApiResponse<T = unknown> {
   success: boolean;
@@ -20,7 +21,7 @@ export async function apiFetch<T = unknown>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const token = typeof window !== 'undefined'
-    ? localStorage.getItem('careercraft_token_v2')
+    ? localStorage.getItem(AUTH_TOKEN_KEY)
     : null;
 
   const headers: Record<string, string> = {
@@ -37,7 +38,7 @@ export async function apiFetch<T = unknown>(
 
     if (res.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('careercraft_token_v2');
+        localStorage.removeItem(AUTH_TOKEN_KEY);
       }
       return { success: false, error: '登录已过期，请重新登录' };
     }
@@ -70,5 +71,43 @@ export async function trackEvent(
     });
   } catch {
     // 静默失败，不影响主流程
+  }
+}
+
+/**
+ * 带鉴权的 FormData 上传（不设置 Content-Type，由浏览器自动附加 boundary）
+ */
+export async function apiFetchFormData<T = unknown>(
+  url: string,
+  formData: FormData
+): Promise<ApiResponse<T>> {
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem(AUTH_TOKEN_KEY)
+    : null;
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const res = await fetch(url, { method: 'POST', headers, body: formData });
+
+    if (res.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+      return { success: false, error: '请先登录后再上传简历' };
+    }
+
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      return { success: false, error: data.error || '请求过于频繁，请稍后再试' };
+    }
+
+    const data = await res.json();
+    return data as ApiResponse<T>;
+  } catch {
+    return { success: false, error: '网络错误' };
   }
 }

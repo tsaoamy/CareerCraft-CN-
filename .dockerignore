@@ -1,0 +1,59 @@
+# Dependencies (Dockerfile runs npm ci)
+node_modules
+.pnp
+.pnp.*
+
+# Build output (Dockerfile builds from scratch)
+.next
+out
+build
+dist
+
+# Database (cloud-deployed)
+data
+*.sqlite
+*.db
+
+# Development
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Tests
+coverage
+.nyc_output
+
+# Docs & scripts (not needed at runtime)
+docs
+scripts
+*.bat
+!setup.bat
+
+# Config files not needed
+.env
+.env.local
+.env.development
+.env.production
+.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+.codebuddy
+*.tsbuildinfo
+next-env.d.ts
+tsc_errors.txt
+
+# Deploy scripts
+deploy*.bat
+deploy*.txt

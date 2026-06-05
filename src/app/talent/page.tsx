@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { Radar, Compass, TrendingUp, AlertTriangle, Award, Target, Zap, Brain } from 'lucide-react';
 import EChartsReact from 'echarts-for-react';
+import { AUTH_TOKEN_KEY } from '@/lib/auth/constants';
 
 interface TalentData {
   skill_structure: {
@@ -37,7 +38,7 @@ export default function TalentProfilePage() {
 
   async function fetchProfile() {
     try {
-      const token = localStorage.getItem('careercraft_token_v2');
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
       const res = await fetch('/api/talent', {
         headers: { Authorization: `Bearer ${token}` },
       });

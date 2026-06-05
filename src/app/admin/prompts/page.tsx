@@ -11,6 +11,7 @@ import {
   Layers, ToggleLeft, ToggleRight, Beaker, X,
   ChevronDown, Search, RefreshCw
 } from 'lucide-react';
+import { AUTH_TOKEN_KEY } from '@/lib/auth/constants';
 
 interface Prompt {
   id: string;
@@ -78,7 +79,7 @@ export default function PromptsPage() {
   const fetchPrompts = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('careercraft_token_v2');
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
       const params = new URLSearchParams();
       if (categoryFilter) params.set('category', categoryFilter);
       if (modelFilter) params.set('model_type', modelFilter);
@@ -98,7 +99,7 @@ export default function PromptsPage() {
   useEffect(() => { fetchPrompts(); }, [fetchPrompts]);
 
   const handleSave = async (formData: Record<string, unknown>) => {
-    const token = localStorage.getItem('careercraft_token_v2');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const isEdit = !!editingPrompt;
 
     const url = isEdit ? '/api/admin/prompts' : '/api/admin/prompts';
@@ -127,7 +128,7 @@ export default function PromptsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除此 Prompt？该操作不可撤销。')) return;
-    const token = localStorage.getItem('careercraft_token_v2');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const res = await fetch(`/api/admin/prompts?id=${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
@@ -138,7 +139,7 @@ export default function PromptsPage() {
   };
 
   const handleToggleActive = async (prompt: Prompt) => {
-    const token = localStorage.getItem('careercraft_token_v2');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const res = await fetch('/api/admin/prompts', {
       method: 'PUT',
       headers: {
@@ -151,7 +152,7 @@ export default function PromptsPage() {
 
   const handleViewVersions = async (promptId: string) => {
     setShowVersions(promptId);
-    const token = localStorage.getItem('careercraft_token_v2');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const res = await fetch(`/api/admin/prompts/${promptId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -161,7 +162,7 @@ export default function PromptsPage() {
 
   const handleRollback = async (promptId: string, version: number) => {
     if (!confirm(`确定回滚到版本 ${version}？`)) return;
-    const token = localStorage.getItem('careercraft_token_v2');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const res = await fetch(`/api/admin/prompts/${promptId}`, {
       method: 'POST',
       headers: {

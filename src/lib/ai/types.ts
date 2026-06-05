@@ -17,6 +17,10 @@ export interface CopilotMessage {
   structured?: boolean;
   /** 结构化数据 */
   data?: ReviewResult | EnhancementResult | MatchResult | null;
+  /** 回复来源 */
+  source?: 'ai' | 'offline';
+  /** 加载中占位 */
+  pending?: boolean;
 }
 
 export interface ChatRequest {
@@ -26,15 +30,41 @@ export interface ChatRequest {
     targetPosition?: string;
     jobDescription?: string;
     projectExperience?: string;
+    company?: string;
+    jdKeywords?: string[];
   };
-  mode?: 'chat' | 'review' | 'enhance' | 'match';
+  mode?: 'chat' | 'review' | 'enhance' | 'match' | 'generate-resume';
 }
 
 export interface ChatResponse {
   success: boolean;
   message?: string;
-  data?: ReviewResult | EnhancementResult | MatchResult | null;
+  data?: ReviewResult | EnhancementResult | MatchResult | TailoredResumeResult | null;
   error?: string;
+  meta?: { source: 'ai' | 'offline' };
+}
+
+// ==========================================
+// 岗位定制简历结果
+// ==========================================
+
+export interface TailoredResumeExperience {
+  title: string;
+  organization?: string;
+  period?: string;
+  highlights: string[];
+}
+
+export interface TailoredResumeResult {
+  targetTitle: string;
+  targetCompany?: string;
+  summary: string;
+  skills: { core: string[]; other: string[] };
+  experiences: TailoredResumeExperience[];
+  education?: string;
+  keywordCoverage: number;
+  tailoringNotes: string[];
+  fullText: string;
 }
 
 // ==========================================

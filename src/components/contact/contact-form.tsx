@@ -1,5 +1,7 @@
 'use client';
 
+import { OFFICIAL_EMAIL } from '@/lib/site-config';
+
 export function ContactForm() {
   return (
     <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
@@ -43,7 +45,7 @@ export function ContactForm() {
         发送留言
       </button>
       <p className="text-[12px] text-apple-text-secondary text-center">
-        或者直接发送邮件至 1759486723@qq.com
+        或者直接发送邮件至 {OFFICIAL_EMAIL}
       </p>
     </form>
   );

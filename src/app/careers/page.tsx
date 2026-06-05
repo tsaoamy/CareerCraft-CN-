@@ -1,4 +1,5 @@
 import { LegalHero } from "@/components/legal/legal-hero";
+import { OFFICIAL_EMAIL } from "@/lib/site-config";
 
 const positions = [
   {
@@ -118,7 +119,7 @@ export default function CareersPage() {
                   </div>
                 </div>
                 <a
-                  href={`mailto:1759486723@qq.com?subject=应聘：${pos.title}`}
+                  href={`mailto:${OFFICIAL_EMAIL}?subject=应聘：${pos.title}`}
                   className="shrink-0 inline-flex items-center px-5 py-2.5 rounded-full bg-apple-blue text-white text-[13px] font-medium hover:opacity-90 transition-opacity self-start"
                 >
                   投递简历
@@ -130,8 +131,8 @@ export default function CareersPage() {
           <div className="mt-8 pt-6 border-t border-[#d2d2d7]/40 dark:border-[#38383a]/40">
             <p className="text-[14px] text-apple-text-secondary text-center">
               以上没有适合你的职位？欢迎自荐：{" "}
-              <a href="mailto:1759486723@qq.com" className="text-apple-blue hover:underline font-medium">
-                1759486723@qq.com
+              <a href={`mailto:${OFFICIAL_EMAIL}`} className="text-apple-blue hover:underline font-medium">
+                {OFFICIAL_EMAIL}
               </a>
             </p>
           </div>

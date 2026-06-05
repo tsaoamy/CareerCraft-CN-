@@ -1,0 +1,20 @@
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+
+# Copy pre-built standalone output (bundled server + external packages)
+COPY . .
+
+# Re-install dependencies inside Docker to ensure Alpine-native binaries
+# This is the key fix - npm modules get correct platform binaries
+RUN if [ -f package.json ]; then npm install --production --legacy-peer-deps --no-audit --no-fund; fi
+
+RUN mkdir -p /data && chown node:node /data
+
+EXPOSE 3000
+USER node
+CMD ["node", "server.js"]

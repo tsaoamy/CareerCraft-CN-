@@ -35,23 +35,20 @@ export function CopilotMessageBubble({ message }: { message: CopilotMessage }) {
 
       {/* Content */}
       <div className={`flex-1 min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`}>
-        {/* Text message */}
-        {message.content && !message.structured && (
+        {message.content && (
           <div
-            className={`inline-block max-w-[85%] px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap ${
+            className={`inline-block max-w-[90%] px-3.5 py-2 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap break-words ${
               isUser
                 ? 'bg-[#0071e3] text-white rounded-tr-md'
                 : 'bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-[#f5f5f7] rounded-tl-md'
             }`}
           >
-            {/* Render markdown-like bold */}
             {renderMessageContent(message.content)}
           </div>
         )}
 
-        {/* Structured data cards */}
         {message.structured && message.data && (
-          <div className="mt-2 max-w-[95%]">
+          <div className={`${message.content ? 'mt-2' : ''} max-w-[95%]`}>
             {renderStructuredCard(message)}
           </div>
         )}

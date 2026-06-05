@@ -1,13 +1,17 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
-import type { CopilotMessage, ReviewResult, EnhancementResult, MatchResult } from '@/lib/ai/types';
-import { WELCOME_MESSAGE } from '@/lib/ai/prompts';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
+import type { CopilotMessage } from '@/lib/ai/types';
+import { getWelcomeMessage } from '@/lib/ai/prompts';
+import { detectCopilotMode } from '@/lib/ai/offline-chat';
+import { useLocale } from '@/lib/i18n/locale-context';
+import { translations } from '@/lib/i18n/translations';
 
 interface CopilotContextType {
   isOpen: boolean;
   messages: CopilotMessage[];
   isLoading: boolean;
+  aiSource: 'ai' | 'offline' | null;
   toggleOpen: () => void;
   sendMessage: (content: string, mode?: 'chat' | 'review' | 'enhance' | 'match') => Promise<void>;
   clearMessages: () => void;
@@ -23,89 +27,110 @@ function generateId() {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+
+function makeWelcome(locale: 'en' | 'zh'): CopilotMessage {
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    content: getWelcomeMessage(locale),
+    timestamp: Date.now(),
+  };
+}
+
 export function CopilotProvider({ children }: { children: ReactNode }) {
+  const { locale } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<CopilotMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: WELCOME_MESSAGE,
-      timestamp: Date.now(),
-    },
-  ]);
+  const [messages, setMessages] = useState<CopilotMessage[]>([makeWelcome(locale)]);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiSource, setAiSource] = useState<'ai' | 'offline' | null>(null);
   const [resumeContent, setResumeContent] = useState('');
-  const [targetJD, setTargetJD] = useState('');
-  const abortRef = useRef<AbortController | null>(null);
+  const [targetJD, setTargetJDState] = useState('');
+  const resumeRef = useRef('');
+  const targetJDRef = useRef('');
+
+  useEffect(() => {
+    setMessages((prev) => {
+      const nonWelcome = prev.filter((m) => m.id !== 'welcome');
+      if (nonWelcome.length === 0) return [makeWelcome(locale)];
+      return prev;
+    });
+  }, [locale]);
 
   const toggleOpen = useCallback(() => {
     setIsOpen((prev) => !prev);
   }, []);
 
   const clearMessages = useCallback(() => {
-    setMessages([
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: WELCOME_MESSAGE,
-        timestamp: Date.now(),
-      },
-    ]);
-  }, []);
+    setMessages([makeWelcome(locale)]);
+    setAiSource(null);
+  }, [locale]);
 
   const uploadResume = useCallback((content: string) => {
+    resumeRef.current = content;
     setResumeContent(content);
   }, []);
 
+  const setTargetJD = useCallback((jd: string) => {
+    targetJDRef.current = jd;
+    setTargetJDState(jd);
+  }, []);
+
   const sendMessage = useCallback(
-    async (content: string, mode: 'chat' | 'review' | 'enhance' | 'match' = 'chat') => {
-      // Add user message
+    async (content: string, explicitMode?: 'chat' | 'review' | 'enhance' | 'match') => {
+      const resume = resumeRef.current;
+      const jd = targetJDRef.current;
+      const mode = explicitMode ?? detectCopilotMode(content, resume, jd);
+
       const userMsg: CopilotMessage = {
         id: generateId(),
         role: 'user',
         content,
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, userMsg]);
-      setIsLoading(true);
 
-      // Add loading placeholder
       const loadingId = generateId();
       const loadingMsg: CopilotMessage = {
         id: loadingId,
         role: 'assistant',
-        content: '正在思考...',
+        content: '',
         timestamp: Date.now(),
+        pending: true,
       };
-      setMessages((prev) => [...prev, loadingMsg]);
+
+      let historyForApi: { role: string; content: string }[] = [];
+
+      setMessages((prev) => {
+        historyForApi = prev
+          .filter((m) => !m.pending && m.content.length > 0 && m.id !== 'welcome')
+          .map((m) => ({ role: m.role, content: m.content }));
+        historyForApi.push({ role: 'user', content });
+        return [...prev, userMsg, loadingMsg];
+      });
+
+      setIsLoading(true);
+      const tc = translations[locale].copilot;
 
       try {
-        // Determine endpoint
         let endpoint = '/api/ai/chat';
         let body: Record<string, unknown> = {
-          messages: [
-            ...messages
-              .filter((m) => m.role !== 'system')
-              .map((m) => ({ role: m.role, content: m.content })),
-            { role: 'user', content },
-          ],
-          mode,
+          messages: historyForApi,
+          mode: 'chat',
           context: {
-            resumeContent,
-            projectExperience: content, // For enhance mode
-            jobDescription: targetJD,
+            resumeContent: resume,
+            projectExperience: content,
+            jobDescription: jd,
           },
         };
 
         if (mode === 'review') {
           endpoint = '/api/ai/review';
-          body = { resumeContent: content };
+          body = { resumeContent: resume || content };
         } else if (mode === 'enhance') {
           endpoint = '/api/ai/enhance';
           body = { projectDescription: content };
         } else if (mode === 'match') {
           endpoint = '/api/ai/match';
-          body = { resumeContent: resumeContent || content, jdContent: targetJD || content };
+          body = { resumeContent: resume || content, jdContent: jd || content };
         }
 
         const response = await fetch(endpoint, {
@@ -115,42 +140,42 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
         });
 
         const data = await response.json();
+        const source: 'ai' | 'offline' = data.meta?.source === 'ai' ? 'ai' : 'offline';
+        setAiSource(source);
 
-        // Replace loading message with actual response
         setMessages((prev) =>
           prev.map((m) => {
-            if (m.id === loadingId) {
-              return {
-                id: generateId(),
-                role: 'assistant' as const,
-                content: data.message || data.error || '收到回复',
-                timestamp: Date.now(),
-                structured: !!data.data,
-                data: data.data || null,
-              };
-            }
-            return m;
+            if (m.id !== loadingId) return m;
+            return {
+              id: generateId(),
+              role: 'assistant' as const,
+              content: data.message || data.error || tc.replyFallback,
+              timestamp: Date.now(),
+              structured: !!data.data,
+              data: data.data || null,
+              source,
+            };
           })
         );
-      } catch (error: any) {
+      } catch {
+        setAiSource('offline');
         setMessages((prev) =>
           prev.map((m) => {
-            if (m.id === loadingId) {
-              return {
-                id: generateId(),
-                role: 'assistant' as const,
-                content: '抱歉，我暂时无法回复。请稍后重试。',
-                timestamp: Date.now(),
-              };
-            }
-            return m;
+            if (m.id !== loadingId) return m;
+            return {
+              id: generateId(),
+              role: 'assistant' as const,
+              content: tc.errorReply,
+              timestamp: Date.now(),
+              source: 'offline' as const,
+            };
           })
         );
       } finally {
         setIsLoading(false);
       }
     },
-    [messages, resumeContent, targetJD]
+    [locale],
   );
 
   return (
@@ -159,6 +184,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
         isOpen,
         messages,
         isLoading,
+        aiSource,
         toggleOpen,
         sendMessage,
         clearMessages,

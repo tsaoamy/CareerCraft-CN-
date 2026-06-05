@@ -10,6 +10,7 @@ import {
   buildReviewMessages,
   buildEnhanceMessages,
   buildMatchMessages,
+  buildGenerateResumeMessages,
 } from './prompts';
 import type {
   ChatRequest,
@@ -17,7 +18,11 @@ import type {
   ReviewResult,
   EnhancementResult,
   MatchResult,
+  TailoredResumeResult,
 } from './types';
+import { generateTailoredResumeLocal } from '@/lib/tailored-resume';
+import { getOfflineChatResponse } from '@/lib/ai/offline-chat';
+import { computeJdResumeMatch } from '@/lib/match-engine';
 
 // 配置
 const AI_CONFIG = {
@@ -181,6 +186,62 @@ export async function enhanceProject(projectDescription: string): Promise<ChatRe
 }
 
 /**
+ * 岗位定制简历生成
+ */
+export async function generateTailoredResume(
+  resumeContent: string,
+  jobTitle: string,
+  jdText: string,
+  options?: { company?: string; jdKeywords?: string[] }
+): Promise<ChatResponse> {
+  const jdKeywords = options?.jdKeywords ?? [];
+  const company = options?.company;
+
+  try {
+    const messages = buildGenerateResumeMessages(
+      resumeContent,
+      jobTitle,
+      company,
+      jdText,
+      jdKeywords
+    );
+    const raw = await callAI(messages, { temperature: 0.4, maxTokens: 6000, jsonMode: true });
+    const data = parseJSONResponse(raw) as unknown as TailoredResumeResult;
+
+    if (!data.fullText && data.summary) {
+      data.fullText = buildFullTextFromResult(data);
+    }
+
+    return {
+      success: true,
+      message: `定制简历已生成，关键词覆盖率约 ${data.keywordCoverage}%`,
+      data,
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message || '简历生成失败' };
+  }
+}
+
+function buildFullTextFromResult(r: TailoredResumeResult): string {
+  let text = `# 定制简历 — ${r.targetTitle}\n\n`;
+  if (r.targetCompany) text += `**目标公司：** ${r.targetCompany}\n\n`;
+  text += `## 个人摘要\n\n${r.summary}\n\n`;
+  text += `## 核心技能\n\n**与岗位匹配：** ${r.skills.core.join(' · ')}\n\n`;
+  if (r.skills.other?.length) text += `**其他技能：** ${r.skills.other.join(' · ')}\n\n`;
+  text += `## 工作 / 项目经历\n\n`;
+  for (const exp of r.experiences) {
+    text += `### ${exp.title}`;
+    if (exp.organization) text += ` · ${exp.organization}`;
+    if (exp.period) text += `\n*${exp.period}*`;
+    text += '\n\n';
+    for (const h of exp.highlights) text += `- ${h}\n`;
+    text += '\n';
+  }
+  if (r.education) text += `## 教育背景\n\n${r.education}\n\n`;
+  return text.trim();
+}
+
+/**
  * 岗位匹配
  */
 export async function matchPosition(resumeContent: string, jdContent: string): Promise<ChatResponse> {
@@ -219,38 +280,26 @@ export async function mockChat(request: ChatRequest): Promise<ChatResponse> {
     return mockMatch(request.context.resumeContent, request.context.jobDescription);
   }
 
+  // 检测是否为定制简历生成
+  if (request.mode === 'generate-resume' && request.context?.resumeContent && request.context?.targetPosition) {
+    return mockGenerateResume(
+      request.context.resumeContent,
+      request.context.targetPosition,
+      request.context.jobDescription || '',
+      request.context.company,
+      request.context.jdKeywords
+    );
+  }
+
   // 默认对话回复
   return mockGeneralChat(lastMessage);
 }
 
 function mockGeneralChat(message: string): ChatResponse {
-  const responses = [
-    `很好的问题！让我帮你分析一下。
-
-**为什么这很重要：**
-很多求职者忽略了这个方面，但 HR 其实很关注这一点，因为这关系到你能否快速融入团队。
-
-**我的建议：**
-1. 先梳理你的核心经历，找到最能体现相关能力的部分
-2. 用具体的数据和案例来支撑，而不是泛泛而谈
-3. 关注"你做了什么"和"你带来了什么结果"
-
-💡 **思考一下：** 在你最近的经历中，有没有一个可以很好体现这个能力的案例？不妨先自己试着描述一下，然后我可以帮你优化表达。`,
-    `这是一个非常好的问题！说明你已经在深入思考自己的职业发展了。
-
-**我的理解是：** 你关心的核心其实是——如何在有限的篇幅内最大化展示自己的价值。
-
-**给你一个思路：**
-- 先确定目标岗位最看重什么（看 JD 中的前 3 条要求）
-- 把你的经历按"与岗位的关联度"排序
-- 关联度最高的放前面，用最多的篇幅
-
-🤔 **想请你思考一下：** 你觉得自己的经历中，哪一段最能打动目标岗位的面试官？为什么？`,
-  ];
-
   return {
     success: true,
-    message: responses[Math.floor(Math.random() * responses.length)],
+    message: getOfflineChatResponse(message),
+    meta: { source: 'offline' as const },
   };
 }
 
@@ -331,44 +380,81 @@ function mockEnhance(projectDescription: string): ChatResponse {
 }
 
 function mockMatch(resumeContent: string, jdContent: string): ChatResponse {
+  const breakdown = computeJdResumeMatch(resumeContent, jdContent);
+  const { matchScore, keywordCoverage, matchedKeywords, missingKeywords, skillGaps } = breakdown;
+
+  const partial = skillGaps
+    .filter((g) => g.current_level > 0 && g.current_level < g.required_level - 1)
+    .map((g) => `${g.skill}（基础具备，建议深化）`);
+
+  const level: '高' | '中' | '低' = matchScore >= 75 ? '高' : matchScore >= 50 ? '中' : '低';
+
   const result: MatchResult = {
-    matchScore: 68,
+    matchScore,
     skillAnalysis: {
-      matched: ['团队协作', '沟通能力', '办公软件使用'],
-      partial: ['数据分析（有基础但需加强）', '项目管理（有实践经验但不够系统）'],
-      missing: ['SQL 进阶查询', '数据可视化工具（如 Tableau）', 'A/B 测试方法论'],
+      matched: matchedKeywords.slice(0, 8),
+      partial: partial.slice(0, 4),
+      missing: missingKeywords.slice(0, 6),
     },
     keywordMatch: {
-      coverage: 62,
-      matched: ['用户增长', '数据分析', '产品运营', '跨部门协作'],
-      missing: ['SQL', 'Tableau', 'A/B 测试', '用户画像', '留存优化'],
+      coverage: keywordCoverage,
+      matched: matchedKeywords,
+      missing: missingKeywords,
     },
     competitiveness: {
-      level: '中',
-      strengths: ['实战经验丰富，有完整的项目闭环经验', '跨部门协作能力强，说明沟通和推动力好', '对数据敏感，能用数据指导决策'],
-      weaknesses: ['部分硬技能（如 SQL 进阶、数据工具）有待提升', '缺少大厂或知名公司背景', '简历中缺少系统性的方法论总结'],
-      suggestion: '建议在简历中补充系统性的方法论表述（如"通过 XX 方法论指导了 YY 项目"），同时尽快补齐关键硬技能。',
+      level,
+      strengths: matchedKeywords.length > 0
+        ? [`已覆盖 ${matchedKeywords.length} 项 JD 核心技能/关键词`, '简历内容与岗位描述有可验证的重叠']
+        : ['建议补充与 JD 对齐的项目与技能描述'],
+      weaknesses: missingKeywords.length > 0
+        ? missingKeywords.slice(0, 3).map((s) => `尚未体现：${s}`)
+        : ['可进一步量化项目成果'],
+      suggestion: missingKeywords.length > 0
+        ? `建议优先补齐：${missingKeywords.slice(0, 3).join('、')}`
+        : '核心匹配较好，可突出领导力与跨团队协作案例',
     },
-    missingSkills: [
-      { skill: 'SQL 进阶', importance: 'high', suggestion: '建议学习窗口函数、复杂查询、性能优化，可以通过牛客网或 LeetCode 练习。预计 2-3 周可掌握。' },
-      { skill: '数据可视化', importance: 'medium', suggestion: '学习 Tableau 或 Power BI 基础，做一个个人 Dashboard 项目即可满足简历需求。预计 1-2 周。' },
-      { skill: 'A/B 测试', importance: 'medium', suggestion: '学习《A/B 测试实战》或相关在线课程，了解实验设计、样本量计算、统计显著性等概念。预计 1 周。' },
-    ],
+    missingSkills: missingKeywords.slice(0, 5).map((skill, i) => ({
+      skill,
+      importance: (i < 2 ? 'high' : i < 4 ? 'medium' : 'low') as 'high' | 'medium' | 'low',
+      suggestion: `在简历中补充与「${skill}」相关的项目或课程经历`,
+    })),
     suggestedAdditions: [
-      '在项目经历中补充数据分析相关的具体操作（用了什么工具、分析了什么数据、得出了什么结论）',
-      '添加一个"核心方法论"或"专业技能"板块，系统展示你的方法论框架',
-      '如果有数据相关的个人项目或学习记录，建议补充',
+      '在项目经历中用 STAR 法则补充可量化成果',
+      '将 JD 高频关键词自然嵌入经历描述',
+      missingKeywords.length > 0 ? `重点补充：${missingKeywords.slice(0, 2).join('、')}` : '可增加与岗位业务场景相关的总结句',
     ],
     hrTopQuestions: [
-      '你简历里提到"通过数据分析发现了用户增长的机会"，能具体说说你分析了什么数据、用了什么工具、最终带来了什么结果吗？',
-      '看你的经历偏产品运营，但这个岗位需要较强的 SQL 能力，你目前的 SQL 水平如何？有相关项目经验吗？',
-      '你之前主要做 C 端产品运营，我们这边偏 B 端数据分析，你怎么看待这个转型？你觉得自己最大的挑战是什么？',
+      `你简历中与岗位相关的${matchedKeywords[0] ?? '核心技能'}经验，能举一个具体案例吗？`,
+      missingKeywords[0] ? `JD 要求${missingKeywords[0]}，你目前的学习或实践经验如何？` : '你认为自己与这个岗位最匹配的一点是什么？',
+      '请描述一次你解决复杂问题并带来可量化结果的经历',
     ],
   };
 
   return {
     success: true,
-    message: `岗位匹配分析完成，匹配度：${result.matchScore}%。以下是详细分析。`,
+    message: `岗位匹配分析完成，匹配度：${result.matchScore}%`,
+    data: result,
+  };
+}
+
+function mockGenerateResume(
+  resumeContent: string,
+  jobTitle: string,
+  jdText: string,
+  company?: string,
+  jdKeywords?: string[]
+): ChatResponse {
+  const result = generateTailoredResumeLocal({
+    resumeContent,
+    jobTitle,
+    company,
+    jdText,
+    jdKeywords: jdKeywords ?? [],
+  });
+
+  return {
+    success: true,
+    message: `定制简历已生成（智能重组模式），关键词覆盖率约 ${result.keywordCoverage}%`,
     data: result,
   };
 }
@@ -377,9 +463,15 @@ function mockMatch(resumeContent: string, jdContent: string): ChatResponse {
  * 智能路由：根据环境判断使用真实 API 还是模拟数据
  */
 export async function smartChat(request: ChatRequest): Promise<ChatResponse> {
-  // 如果配置了 API Key，使用真实 API；否则使用模拟数据
-  if (AI_CONFIG.apiKey && AI_CONFIG.apiKey !== 'sk-your-api-key-here') {
-    return chat(request);
+  const hasKey = AI_CONFIG.apiKey && AI_CONFIG.apiKey !== 'sk-your-api-key-here';
+
+  if (hasKey) {
+    const result = await chat(request);
+    if (result.success) {
+      return { ...result, meta: { source: 'ai' as const } };
+    }
   }
-  return mockChat(request);
+
+  const mockResult = await mockChat(request);
+  return { ...mockResult, meta: { source: 'offline' as const } };
 }

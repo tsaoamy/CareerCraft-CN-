@@ -1,4 +1,5 @@
 import { LegalHero } from "@/components/legal/legal-hero";
+import { OFFICIAL_EMAIL } from "@/lib/site-config";
 
 export const metadata = {
   title: "服务条款 — CareerCraft",
@@ -113,7 +114,7 @@ export default function TermsPage() {
             <p className="text-[14px]">
               如有疑问，请通过以下方式联系我们：<br />
               <a href="/contact" className="text-apple-blue hover:underline">联系我们</a> &nbsp;或 &nbsp;
-              <span className="text-apple-text dark:text-white">1759486723@qq.com</span>
+              <span className="text-apple-text dark:text-white">{OFFICIAL_EMAIL}</span>
             </p>
           </div>
         </div>

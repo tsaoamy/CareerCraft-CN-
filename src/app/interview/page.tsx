@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Play, MessageCircle, Star, Send, Bot, User, Zap, Wand2, History } from "lucide-react";
+import { Play, MessageCircle, Star, Send, Bot, User, Wand2, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { GlassPageHero } from "@/components/ui/glass-page-hero";
+import { FeaturePageRoot, FeaturePageShell } from "@/components/layout/feature-page-shell";
 import { Input } from "@/components/ui/input";
 import type {
   InterviewSession,
@@ -13,15 +15,63 @@ import type {
   InterviewQuickMode,
   InterviewStatus,
 } from "@/types/interview";
-import { questionBank, getQuestionsByCategory, getQuestionsByJob } from "@/data/interview-questions";
+import { questionBank, filterQuestionsByLanguage, getQuestionBankStats, pickMixedQuestions } from "@/data/interview-questions";
 import { evaluateAnswer, calculateResult } from "@/lib/interview-engine";
+import {
+  buildInterviewPlan,
+  buildHistoryInterviewPlan,
+  buildAiChatWelcome,
+  detectJobCategory,
+  type InterviewPlanAudit,
+} from "@/lib/interview-job-audit";
+import {
+  JobTitleAuditHint,
+  InterviewStartConfirmPanel,
+  InterviewSessionBanner,
+} from "@/components/interview/interview-start-audit";
 import { ModeSelector } from "@/components/interview/mode-selector";
 import { CustomSetup } from "@/components/interview/custom-setup";
 import { QuestionCard } from "@/components/interview/question-card";
 import { ResultReport } from "@/components/interview/result-report";
+import { InterviewPrepLibrary } from "@/components/interview/prep-library";
+import { InterviewLangSwitcher } from "@/components/interview/interview-lang-switcher";
+import {
+  dimensionToCategories,
+  getPrepStats,
+  type InterviewDimension,
+  type InterviewLanguage,
+} from "@/data/interview-prep";
+import type { InterviewCategory, AnswerSubmitPayload, JobCategory } from "@/types/interview";
+import { cn } from "@/lib/utils";
+import { useLocale } from "@/lib/i18n/locale-context";
+import { useSystemFeedback } from "@/lib/feedback/use-system-feedback";
+import { tDimension } from "@/lib/i18n/interview-labels";
 
-// ──── 历史记录 ────
-const historySessions = [
+// ──── 历史记录（点击后按岗位 + 模式直接审核，不再跳转通用模式选择） ────
+const FULL_SIM_CATEGORIES: InterviewCategory[] = [
+  "自我介绍",
+  "项目追问",
+  "行为面试",
+  "情景问答",
+  "案例分析",
+  "AI 应用",
+  "职业规划",
+  "通用问答",
+  "团队协作",
+];
+
+interface HistorySessionItem {
+  role: string;
+  type: string;
+  questions: number;
+  score: number;
+  date: string;
+  topics: string[];
+  dimension: InterviewDimension;
+  categories?: InterviewCategory[];
+}
+
+const historySessions: HistorySessionItem[] = [
   {
     role: "腾讯 AI 产品经理",
     type: "完整模拟",
@@ -29,6 +79,8 @@ const historySessions = [
     score: 82,
     date: "2026-05-20",
     topics: ["自我介绍", "项目追问", "行为面试", "产品案例"],
+    dimension: "behavioral",
+    categories: FULL_SIM_CATEGORIES,
   },
   {
     role: "字节跳动运营岗",
@@ -37,11 +89,26 @@ const historySessions = [
     score: 75,
     date: "2026-05-18",
     topics: ["情景问答", "冲突处理", "团队协作"],
+    dimension: "behavioral",
   },
 ];
 
 // ──── AI Chat Simulation ────
-function generateAIResponse(userInput: string, context: string): string {
+function generateAIResponse(userInput: string, context: string, language: InterviewLanguage): string {
+  if (language === 'en') {
+    const responses = [
+      `Great answer! You mentioned "${userInput.slice(0, 30)}..." Could you elaborate on your specific role and contribution in this process?`,
+      `I noticed you emphasized teamwork. Can you give a concrete example of how you handled disagreements within the team?`,
+      `Your answer shows great depth. What was the biggest challenge during "${userInput.slice(0, 30)}..." and how did you overcome it?`,
+      `That's a solid approach. If you could do it again, what would you do differently and why?`,
+      `Got it. What were the outcomes of this project? Can you quantify your contributions with specific data?`,
+      `Excellent! What you said about "${userInput.slice(0, 30)}..." shows strong proactivity and learning ability. What's the most important thing you learned from it?`,
+      `That's an impressive experience. What's your view on future trends in "${context}"?`,
+      `You mentioned a key skill. How do you measure your proficiency in it? Do you have a concrete improvement plan?`,
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+
   const responses = [
     `很好的回答！你提到了「${userInput.slice(0, 15)}...」，能否具体展开说说你在这个过程中的角色和贡献？`,
     `我注意到你强调了团队协作，能举一个具体的例子，说明你如何处理团队内部的分歧吗？`,
@@ -58,21 +125,63 @@ function generateAIResponse(userInput: string, context: string): string {
 // ──── 页面 ────
 
 export default function InterviewPage() {
-  // 阶段
+  const { locale, setLocale, t } = useLocale();
+  const ip = t.interviewPage;
+  const fb = useSystemFeedback();
   const [phase, setPhase] = useState<"landing" | "selecting" | "custom" | "in-progress" | "finished" | "ai-chat">("landing");
   const [customJobTitle, setCustomJobTitle] = useState("");
+  const [interviewDimension, setInterviewDimension] = useState<InterviewDimension>("behavioral");
+  const [interviewLanguage, setInterviewLanguage] = useState<InterviewLanguage>("zh");
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [result, setResult] = useState<InterviewResult | null>(null);
-  
-  // AI Chat state
-  const [chatMessages, setChatMessages] = useState<{ role: "ai" | "user"; content: string }[]>([
-    { role: "ai", content: "你好！我是AI面试官。请告诉我你想面试的岗位，以及你最关心的面试方向（如：技术面试、行为面试、项目经历、薪资谈判等），我会针对性地和你练习。你可以随时开始！✨" },
-  ]);
-  const [chatInput, setChatInput] = useState("");
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [confirmPlan, setConfirmPlan] = useState<InterviewPlanAudit | null>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const job = params.get("job");
+    const dimension = params.get("dimension") as InterviewDimension | null;
+    const lang = params.get("lang") as InterviewLanguage | null;
+    if (job) setCustomJobTitle(decodeURIComponent(job));
+    if (dimension && ["behavioral", "situational", "technical"].includes(dimension)) setInterviewDimension(dimension);
+    if (lang === "zh" || lang === "en") {
+      setInterviewLanguage(lang);
+      setLocale(lang);
+    }
+  }, [setLocale]);
+
+  /** 与顶部 EN/中文 全局切换同步 */
+  useEffect(() => {
+    setInterviewLanguage(locale);
+    setConfirmPlan(null);
+  }, [locale]);
+
+  const handleInterviewLanguageChange = useCallback(
+    (lang: InterviewLanguage) => {
+      setInterviewLanguage(lang);
+      setLocale(lang);
+      setConfirmPlan(null);
+    },
+    [setLocale]
+  );
+  
+  // AI Chat state
+  const getDefaultChatMessage = () =>
+    interviewLanguage === 'en'
+      ? "Hello, I'm your AI Interviewer. Please fill in your target role above and pass the audit, then enter free chat mode."
+      : "你好，我是 AI 面试官。请先在上方填写目标岗位并通过审核，再进入自由对话模式。";
+  const [chatMessages, setChatMessages] = useState<{ role: "ai" | "user"; content: string }[]>([
+    { role: "ai", content: getDefaultChatMessage() },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const quickStartRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
   }, [chatMessages]);
 
   const handleSendChat = useCallback(() => {
@@ -81,15 +190,33 @@ export default function InterviewPage() {
     setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setChatInput("");
     setTimeout(() => {
-      const aiResponse = generateAIResponse(userMsg, "面试练习");
+      const aiResponse = generateAIResponse(userMsg, "面试练习", interviewLanguage);
       setChatMessages(prev => [...prev, { role: "ai", content: aiResponse }]);
     }, 800 + Math.random() * 1200);
   }, [chatInput]);
 
-  // ──── 快捷模式选择 ────
+  // ──── 快捷模式选择（保留岗位上下文） ────
   const handleSelectMode = useCallback((mode: InterviewQuickMode) => {
-    startSession(mode.label, mode.jobCategory, mode.questionCount, mode.categories);
-  }, []);
+    const title = customJobTitle.trim() || mode.label;
+    const jobCat: JobCategory = customJobTitle.trim()
+      ? detectJobCategory(customJobTitle)
+      : mode.jobCategory;
+
+    let pool =
+      jobCat === "通用"
+        ? [...questionBank]
+        : questionBank.filter((q) => q.jobs.length === 0 || q.jobs.includes(jobCat));
+    pool = filterQuestionsByLanguage(pool, interviewLanguage);
+    if (mode.categories?.length) {
+      pool = pool.filter((q) => mode.categories.includes(q.category));
+    }
+    if (pool.length === 0) {
+      fb.raw.warning(ip.noEnQuestions);
+      return;
+    }
+
+    startSession(title, jobCat, mode.questionCount, mode.categories, interviewLanguage);
+  }, [customJobTitle, interviewLanguage, ip.noEnQuestions]);
 
   // ──── 自定义模式 ────
   const handleCustomMode = useCallback(() => {
@@ -115,41 +242,83 @@ export default function InterviewPage() {
     setPhase("in-progress");
   }, [customJobTitle]);
 
-  // ──── 快速输入开始 ────
+  // ──── 快速输入：先审核再确认 ────
+  const currentPlan = buildInterviewPlan(customJobTitle, interviewDimension, interviewLanguage);
+
   const handleQuickStart = useCallback(() => {
-    if (!customJobTitle.trim()) return;
-    const pool = getQuestionsByJob("通用");
-    const pool2 = getQuestionsByCategory("自我介绍");
-    const allQuestions = [...pool, ...pool2].filter(
-      (q, i, arr) => arr.findIndex((x) => x.id === q.id) === i,
+    const plan = buildInterviewPlan(customJobTitle, interviewDimension, interviewLanguage);
+    if (!plan.canStart) return;
+    setConfirmPlan(plan);
+  }, [customJobTitle, interviewDimension, interviewLanguage]);
+
+  const handleConfirmStart = useCallback(() => {
+    if (!confirmPlan?.canStart) return;
+    startSession(
+      confirmPlan.jobAudit.normalizedTitle,
+      confirmPlan.jobCategory,
+      confirmPlan.plannedCount,
+      confirmPlan.categories,
+      confirmPlan.language
     );
-    const selected = [...allQuestions].sort(() => Math.random() - 0.5).slice(0, 8);
-    const newSession: InterviewSession = {
-      id: `sess_${Date.now()}`,
-      jobTitle: customJobTitle.trim(),
-      jobCategory: "通用",
-      questions: selected,
-      answers: {},
-      currentIndex: 0,
-      status: "in-progress",
-      startedAt: new Date().toISOString(),
-    };
-    setSession(newSession);
-    setPhase("in-progress");
-  }, [customJobTitle]);
+    setConfirmPlan(null);
+  }, [confirmPlan]);
+
+  /** 历史卡片：预填岗位并弹出审核方案，不再跳转通用模式页 */
+  const handleHistoryRestart = useCallback(
+    (item: HistorySessionItem) => {
+      setCustomJobTitle(item.role);
+      setInterviewDimension(item.dimension);
+      setConfirmPlan(null);
+
+      const plan = buildHistoryInterviewPlan(item.role, interviewLanguage, {
+        dimension: item.dimension,
+        questionCount: item.questions,
+        sessionLabel: item.type,
+        categories: item.categories,
+      });
+
+      setConfirmPlan(plan);
+      setPhase("landing");
+
+      requestAnimationFrame(() => {
+        quickStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    [interviewLanguage]
+  );
+
+  const handleEnterAiChat = useCallback(() => {
+    setChatMessages([
+      { role: "ai", content: buildAiChatWelcome(customJobTitle, interviewDimension, interviewLanguage) },
+    ]);
+    setPhase("ai-chat");
+  }, [customJobTitle, interviewDimension, interviewLanguage]);
 
   // ──── 核心：开始面试会话 ────
-  const startSession = (title: string, jobCategory: string, count: number, categories?: string[]) => {
-    let pool = jobCategory === "通用"
-      ? [...questionBank]
-      : questionBank.filter((q) => q.jobs.length === 0 || q.jobs.includes(jobCategory as any));
+  const startSession = (
+    title: string,
+    jobCategory: string,
+    count: number,
+    categories?: string[],
+    language: InterviewLanguage = interviewLanguage
+  ) => {
+    let pool =
+      jobCategory === "通用"
+        ? [...questionBank]
+        : questionBank.filter((q) => q.jobs.length === 0 || q.jobs.includes(jobCategory as any));
+
+    pool = filterQuestionsByLanguage(pool, language);
 
     if (categories && categories.length > 0) {
       pool = pool.filter((q) => categories.includes(q.category));
     }
 
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+    const shuffled = pickMixedQuestions(pool, Math.min(count, pool.length));
+    if (shuffled.length === 0) {
+      fb.raw.warning(ip.noEnQuestions);
+      return;
+    }
+    const selected = shuffled;
 
     const newSession: InterviewSession = {
       id: `sess_${Date.now()}`,
@@ -167,10 +336,10 @@ export default function InterviewPage() {
   };
 
   // ──── 提交答案 ────
-  const handleSubmitAnswer = useCallback((content: string) => {
+  const handleSubmitAnswer = useCallback((payload: AnswerSubmitPayload) => {
     if (!session) return;
     const q = session.questions[session.currentIndex];
-    const ans = evaluateAnswer(q, content);
+    const ans = evaluateAnswer(q, payload.content, payload.selectedOptionIds);
     const newAnswers = { ...session.answers, [q.id]: ans };
     setSession((prev) => prev ? { ...prev, answers: newAnswers } : null);
   }, [session]);
@@ -202,49 +371,39 @@ export default function InterviewPage() {
     setSession(null);
     setResult(null);
     setCustomJobTitle("");
+    setConfirmPlan(null);
   }, []);
 
   // ========================
   // RENDER: Landing Page
   // ========================
   if (phase === "landing") {
-    return (
-      <div className="max-w-7xl mx-auto px-5 py-10 md:py-14 animate-fade-in-up">
-        {/* Hero — Starry Sky */}
-        <div className="relative mb-10 overflow-hidden rounded-3xl nebula-hero border border-white/10 p-8 md:p-10">
-          <div className="shooting-star" /><div className="shooting-star" /><div className="shooting-star" />
-          <div className="constellation-dot" style={{top:'5%',left:'8%'}} />
-          <div className="constellation-dot" style={{top:'12%',left:'25%'}} />
-          <div className="constellation-dot" style={{top:'8%',left:'50%'}} />
-          <div className="constellation-dot" style={{top:'18%',left:'70%'}} />
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-            <div className="flex-1">
-              <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[12px] text-purple-200">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                星辉面试 · 130+题库
-              </div>
-              <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight text-white">
-                AI 面试官
-              </h1>
-              <p className="text-[16px] text-blue-100/80 mt-2">
-                基于 JD 和简历的智能模拟面试，在星空中磨练你的回答
-              </p>
-            </div>
-            <img
-              src="/images/AI_job_interview_illustration__2026-05-27T02-36-56.png"
-              alt="AI 星辉面试"
-              className="hidden md:block w-48 h-auto rounded-2xl shadow-[0_0_30px_rgba(160,120,255,0.2)]"
-            />
-          </div>
-        </div>
+    const jobCat = detectJobCategory(customJobTitle || "") as any;
+    const prepStats = getPrepStats(interviewDimension, interviewLanguage, jobCat);
+    const bankStats = getQuestionBankStats(interviewLanguage);
 
+    return (
+      <FeaturePageRoot>
+        <GlassPageHero
+          badge={
+            <>
+              <MessageCircle className="w-3.5 h-3.5 text-volt" />
+              {questionBank.length}+ 题库 · {interviewLanguage === "zh" ? "中文" : "English"} {bankStats.total} 题可用
+            </>
+          }
+          title="AI 面试官"
+          subtitle={ip.heroSubtitle}
+          icon={MessageCircle}
+        />
+
+        <FeaturePageShell>
         {/* Session History */}
         <div className="grid md:grid-cols-2 gap-4 mb-10">
           {historySessions.map((s, i) => (
             <div key={i} className="apple-card p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-[17px] font-semibold tracking-tight text-apple-text dark:text-white">
+                  <h3 className="text-[17px] font-semibold tracking-tight text-ink">
                     {s.role}
                   </h3>
                   <p className="text-[12px] text-apple-text-secondary mt-1">
@@ -258,53 +417,108 @@ export default function InterviewPage() {
                   <Badge key={t} variant="accent" className="text-[11px]">{t}</Badge>
                 ))}
               </div>
-              <Button size="sm" className="gap-1.5" onClick={() => setPhase("selecting")}>
-                <Play className="w-3.5 h-3.5" /> 开始新面试
+              <Button variant="volt" size="sm" className="gap-1.5" onClick={() => handleHistoryRestart(s)}>
+                <Play className="w-3.5 h-3.5" /> {ip.againSimulate}
               </Button>
             </div>
           ))}
         </div>
 
         {/* Quick Start */}
+        <div ref={quickStartRef} id="interview-quick-start">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
               <MessageCircle className="w-[18px] h-[18px] text-apple-purple" />
-              <CardTitle>开始新面试</CardTitle>
+              <CardTitle>{ip.quickStart}</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
+              {locale === "en" && (
+                <div className="px-3 py-2 rounded-xl bg-[var(--accent-soft)] border border-[var(--chip-selected-border)] text-[12px] text-volt">
+                  {ip.enBankActive}
+                </div>
+              )}
+
+              <InterviewLangSwitcher
+                dimension={interviewDimension}
+                language={interviewLanguage}
+                onDimensionChange={setInterviewDimension}
+                onLanguageChange={handleInterviewLanguageChange}
+                stats={prepStats}
+              />
               <div className="flex gap-3">
                 <Input
-                  placeholder="输入目标岗位（如：腾讯AI产品经理）"
+                  placeholder={ip.jobPlaceholder}
                   className="flex-1"
                   value={customJobTitle}
-                  onChange={(e) => setCustomJobTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleQuickStart()}
+                  onChange={(e) => {
+                    setCustomJobTitle(e.target.value);
+                    setConfirmPlan(null);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && currentPlan.canStart && handleQuickStart()}
                 />
-                <Button className="gap-2" onClick={handleQuickStart} disabled={!customJobTitle.trim()}>
-                  <Play className="w-4 h-4" /> 开始
+                <Button
+                  variant="volt"
+                  className="gap-2"
+                  onClick={handleQuickStart}
+                  disabled={!currentPlan.canStart}
+                >
+                  <Play className="w-4 h-4" />
+                  {ip.auditPlan}
                 </Button>
               </div>
+
+              <JobTitleAuditHint plan={currentPlan} locale={locale} />
+
+              {confirmPlan && (
+                <InterviewStartConfirmPanel
+                  plan={confirmPlan}
+                  onConfirm={handleConfirmStart}
+                  onCancel={() => setConfirmPlan(null)}
+                />
+              )}
+
+              <p className="text-[12px] text-apple-text-secondary">
+                {ip.mixedFormats} · {currentPlan.availableCount}{" "}
+                {locale === "zh" ? "题可用" : "available"}
+                {bankStats.ai > 0 &&
+                  (locale === "zh"
+                    ? ` · 含 AI 专题 ${bankStats.ai} 题`
+                    : ` · ${bankStats.ai} AI questions`)}
+              </p>
               <div className="flex gap-2 justify-center">
                 <button
                   onClick={() => setPhase("selecting")}
-                  className="text-[12px] text-apple-blue hover:underline font-medium"
+                  className="text-[12px] text-volt hover:underline font-medium"
                 >
-                  选择面试模式
+                  {ip.selectOtherMode}
                 </button>
                 <span className="text-apple-text-secondary">·</span>
                 <button
-                  onClick={() => setPhase("ai-chat")}
-                  className="text-[12px] text-apple-purple hover:underline font-medium inline-flex items-center gap-1"
+                  onClick={handleEnterAiChat}
+                  className="text-[12px] font-medium inline-flex items-center gap-1 text-volt hover:underline"
                 >
-                  <Bot className="w-3 h-3" /> AI自由对话
+                  <Bot className="w-3 h-3" /> {ip.aiFreeChat}
                 </button>
               </div>
             </div>
           </CardContent>
         </Card>
+        </div>
+
+        {/* Prep Library */}
+        <div className="mt-10">
+          <InterviewPrepLibrary
+            jobTitle={customJobTitle || undefined}
+            jobCategory={jobCat}
+            dimension={interviewDimension}
+            language={interviewLanguage}
+            onDimensionChange={setInterviewDimension}
+            onLanguageChange={handleInterviewLanguageChange}
+          />
+        </div>
 
         {/* Tips */}
         <div className="mt-10 grid md:grid-cols-3 gap-5">
@@ -312,34 +526,35 @@ export default function InterviewPage() {
             {
               title: "真实场景模拟",
               desc: "AI 根据真实 JD 和你的简历自动生成面试问题，模拟真实面试流程。",
-              color: "text-apple-blue",
-              bg: "bg-[#e8f4fd] dark:bg-[#003366]",
+              color: "text-volt",
+              bg: "bg-[var(--accent-soft)]",
             },
             {
               title: "即时评分反馈",
               desc: "每题回答后获得即时评分和改进建议，帮助你快速提升面试表现。",
-              color: "text-apple-purple",
-              bg: "bg-[#f4f1fa] dark:bg-[#2d1445]",
+              color: "text-[var(--chip-selected-text)]",
+              bg: "bg-[var(--chip-selected-bg)]",
             },
             {
               title: "多轮深度对话",
               desc: "支持追问和深度探讨，涵盖行为面试、技术面试、情景问答等。",
-              color: "text-apple-green",
-              bg: "bg-[#e8f8ee] dark:bg-[#0a3622]",
+              color: "text-[var(--color-success)]",
+              bg: "bg-[var(--color-success-soft)]",
             },
           ].map((tip) => (
             <div key={tip.title} className="apple-card p-6">
               <div className={`w-10 h-10 rounded-xl ${tip.bg} flex items-center justify-center mb-4`}>
                 <Star className={`w-5 h-5 ${tip.color}`} />
               </div>
-              <h3 className="text-[15px] font-semibold tracking-tight text-apple-text dark:text-white mb-2">
+              <h3 className="text-[15px] font-semibold tracking-tight text-ink mb-2">
                 {tip.title}
               </h3>
               <p className="text-[13px] text-apple-text-secondary leading-relaxed">{tip.desc}</p>
             </div>
           ))}
         </div>
-      </div>
+      </FeaturePageShell>
+      </FeaturePageRoot>
     );
   }
 
@@ -348,19 +563,22 @@ export default function InterviewPage() {
   // ========================
   if (phase === "selecting") {
     return (
-      <div className="max-w-7xl mx-auto px-5 py-10 md:py-14">
+      <FeaturePageRoot>
+      <div className="brand-editorial-width py-10 md:py-14">
         <button
           onClick={() => setPhase("landing")}
-          className="text-[14px] text-apple-blue hover:underline mb-6 inline-block"
+          className="text-[14px] text-volt hover:underline mb-6 inline-block"
         >
-          ← 返回
+          ← {ip.back}
         </button>
         <ModeSelector
           selected={null}
+          jobTitle={customJobTitle.trim() || undefined}
           onSelect={handleSelectMode}
           onCustom={handleCustomMode}
         />
       </div>
+      </FeaturePageRoot>
     );
   }
 
@@ -369,12 +587,15 @@ export default function InterviewPage() {
   // ========================
   if (phase === "custom") {
     return (
-      <div className="max-w-7xl mx-auto px-5 py-10 md:py-14">
+      <FeaturePageRoot>
+      <div className="brand-editorial-width py-10 md:py-14">
         <CustomSetup
           onConfirm={handleCustomConfirm}
           onBack={() => setPhase("selecting")}
+          language={interviewLanguage}
         />
       </div>
+      </FeaturePageRoot>
     );
   }
 
@@ -386,13 +607,21 @@ export default function InterviewPage() {
     if (!q) return null;
 
     return (
-      <div className="max-w-3xl mx-auto px-5 py-10 md:py-14">
+      <FeaturePageRoot>
+      <div className="brand-editorial-width max-w-3xl py-10 md:py-14">
         <button
           onClick={() => setPhase("landing")}
-          className="text-[14px] text-apple-blue hover:underline mb-6 inline-block"
+          className="text-[14px] text-volt hover:underline mb-6 inline-block"
         >
           ← 退出面试
         </button>
+        <InterviewSessionBanner
+          jobTitle={session.jobTitle}
+          dimensionLabel={tDimension(interviewDimension, locale)}
+          languageLabel={locale === "zh" ? "中文题库" : "English Bank"}
+          questionIndex={session.currentIndex}
+          total={session.questions.length}
+        />
         <QuestionCard
           key={q.id}
           question={q}
@@ -404,6 +633,7 @@ export default function InterviewPage() {
           isLast={session.currentIndex >= session.questions.length - 1}
         />
       </div>
+      </FeaturePageRoot>
     );
   }
 
@@ -412,9 +642,11 @@ export default function InterviewPage() {
   // ========================
   if (phase === "finished" && session && result) {
     return (
-      <div className="max-w-7xl mx-auto px-5 py-10 md:py-14">
+      <FeaturePageRoot>
+      <div className="brand-editorial-width py-10 md:py-14">
         <ResultReport result={result} session={session} onRestart={handleRestart} />
       </div>
+      </FeaturePageRoot>
     );
   }
 
@@ -423,65 +655,65 @@ export default function InterviewPage() {
   // ========================
   if (phase === "ai-chat") {
     return (
-      <div className="max-w-3xl mx-auto px-5 py-8 animate-fade-in-up h-[calc(100vh-200px)] flex flex-col">
-        {/* Header — Starry */}
-        <div className="relative overflow-hidden rounded-2xl nebula-hero border border-white/10 p-4 mb-4 shrink-0">
-          <div className="shooting-star" /><div className="shooting-star" />
-          <div className="constellation-dot" style={{top:'5%',left:'10%'}} />
-          <div className="constellation-dot" style={{top:'20%',left:'30%'}} />
-          <div className="constellation-dot" style={{top:'10%',left:'65%'}} />
-          <div className="constellation-dot" style={{top:'25%',left:'85%'}} />
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                <Bot className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-[17px] font-semibold text-white">AI 面试官 · 星空对话</h2>
-                <p className="text-[12px] text-blue-100/70">在星辰中自由练习面试对话</p>
-              </div>
-            </div>
+      <FeaturePageRoot>
+      <div className="brand-editorial-width max-w-3xl py-8 animate-fade-in-up h-[calc(100vh-200px)] flex flex-col">
+        <GlassPageHero
+          compact
+          className="mb-4 shrink-0"
+          title="AI 面试官 · 自由对话"
+          subtitle="基于目标岗位进行开放式练习"
+          action={
             <div className="flex items-center gap-2">
               <button
-                onClick={() => { setChatMessages([{ role: "ai", content: "你好！我是AI面试官。请告诉我你想面试的岗位，以及你最关心的面试方向（如：技术面试、行为面试、项目经历、薪资谈判等），我会针对性地和你练习。你可以随时开始！✨" }]); }}
-                className="text-[12px] text-blue-100/60 hover:text-blue-100 transition-colors"
+                onClick={() => {
+                  setChatMessages([
+                    {
+                      role: "ai",
+                      content: buildAiChatWelcome(customJobTitle, interviewDimension, interviewLanguage),
+                    },
+                  ]);
+                }}
+                className="text-[12px] text-apple-text-secondary hover:text-apple-text dark:hover:text-white transition-colors"
+                title="重新开始对话"
               >
                 <History className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setPhase("landing")}
-                className="text-[13px] text-blue-300 hover:text-white hover:underline transition-colors"
+                className="text-[13px] text-apple-text-secondary hover:text-apple-text dark:hover:text-white transition-colors"
               >
                 ← 退出对话
               </button>
             </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
           {chatMessages.map((msg, i) => (
             <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                msg.role === "ai" 
-                  ? "bg-gradient-to-br from-apple-purple to-[#8944ab]" 
-                  : "bg-gradient-to-br from-apple-blue to-[#5ac8fa]"
+                msg.role === "ai"
+                  ? "bg-[var(--accent-soft)] border border-[var(--chip-selected-border)]"
+                  : "bg-volt"
               }`}>
-                {msg.role === "ai" ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
+                {msg.role === "ai" ? <Bot className="w-4 h-4 text-volt" /> : <User className="w-4 h-4 text-white" />}
               </div>
               <div className={`max-w-[75%] p-4 rounded-2xl text-[14px] leading-relaxed ${
                 msg.role === "ai"
-                  ? "bg-[#f5f5f7] dark:bg-[#2c2c2e] text-apple-text dark:text-white rounded-tl-sm"
-                  : "bg-apple-blue text-white rounded-tr-sm"
+                  ? "bg-[var(--surface-3)] border border-volt/30 text-ink rounded-tl-sm shadow-sm"
+                  : "bg-volt text-white rounded-tr-sm"
               }`}>
                 {msg.content}
               </div>
             </div>
           ))}
-          <div ref={chatEndRef} />
         </div>
 
         {/* Chat Input */}
+        <div className="shrink-0 mb-2 px-3 py-2 rounded-xl feature-panel-muted text-[11px] text-apple-text-secondary">
+          请用完整句子回答 · 敷衍或过短回复无法获得有效练习反馈 · 行为/情景题建议使用 STAR 结构
+        </div>
         <div className="shrink-0 flex gap-2">
           <Input
             placeholder="输入你的回答或提问..."
@@ -490,23 +722,26 @@ export default function InterviewPage() {
             onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
             className="flex-1"
           />
-          <Button onClick={handleSendChat} disabled={!chatInput.trim()} className="gap-2">
+          <Button variant="volt" onClick={handleSendChat} disabled={!chatInput.trim()} className="gap-2">
             <Send className="w-4 h-4" /> 发送
           </Button>
         </div>
 
         {/* Quick actions */}
         <div className="flex flex-wrap gap-1.5 mt-3 shrink-0">
-          {["用STAR法则回答", "给一个具体例子", "追问项目细节", "模拟压力问题"].map((action) => (
+          {(interviewLanguage === 'en'
+            ? ["Answer with STAR", "Give a concrete example", "Dig into project details", "Simulate pressure question"]
+            : ["用STAR法则回答", "给一个具体例子", "追问项目细节", "模拟压力问题"]
+          ).map((action) => (
             <button
               key={action}
               onClick={() => {
                 setChatMessages(prev => [...prev, { role: "user", content: action }]);
                 setTimeout(() => {
-                  setChatMessages(prev => [...prev, { role: "ai", content: generateAIResponse(action, "面试练习") }]);
+                  setChatMessages(prev => [...prev, { role: "ai", content: generateAIResponse(action, "面试练习", interviewLanguage) }]);
                 }, 800);
               }}
-              className="text-[11px] px-2.5 py-1.5 rounded-full bg-[#f5f5f7] dark:bg-[#2c2c2e] text-apple-text-secondary hover:bg-[#e8e8ed] dark:hover:bg-[#3a3a3c] hover:text-apple-text dark:hover:text-white transition-colors"
+              className="text-[11px] px-2.5 py-1.5 rounded-full feature-chip hover:text-ink transition-colors"
             >
               <Wand2 className="w-3 h-3 inline mr-1" />
               {action}
@@ -514,6 +749,7 @@ export default function InterviewPage() {
           ))}
         </div>
       </div>
+      </FeaturePageRoot>
     );
   }
 

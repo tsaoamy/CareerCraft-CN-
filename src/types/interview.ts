@@ -13,7 +13,32 @@ export type InterviewCategory =
   | "职业规划"
   | "压力面试"
   | "团队协作"
-  | "通用问答";
+  | "通用问答"
+  | "AI 应用";
+
+/** 答题形式 */
+export type QuestionFormat = "essay" | "single_choice" | "multi_choice" | "code";
+
+/** 选择题选项 */
+export interface ChoiceOption {
+  id: string;
+  label: string;
+}
+
+/** 代码题测试用例 */
+export interface CodeTestCase {
+  invoke: string;
+  expected: string;
+  description?: string;
+}
+
+/** 代码题配置 */
+export interface CodeConfig {
+  language: "javascript" | "python";
+  starterCode: string;
+  testCases: CodeTestCase[];
+  hint?: string;
+}
 
 /** 目标岗位类型（用于选题定向） */
 export type JobCategory =
@@ -30,35 +55,41 @@ export type JobCategory =
 /** 单道面试题目 */
 export interface InterviewQuestion {
   id: string;
-  /** 题目正文 */
   question: string;
-  /** 题型分类 */
   category: InterviewCategory;
-  /** 适用岗位，空=所有 */
+  format?: QuestionFormat;
   jobs: JobCategory[];
-  /** 难度: 1-5 */
   difficulty: number;
-  /** 考察要点（提示面试官/用户关注什么） */
   focusPoints: string[];
-  /** 参考答案要点 */
   referencePoints: string[];
-  /** 建议回答时长（秒） */
   suggestedDuration: number;
+  language?: "zh" | "en";
+  options?: ChoiceOption[];
+  correctOptionIds?: string[];
+  explanation?: string;
+  sampleAnswer?: string;
+  codeConfig?: CodeConfig;
+}
+
+export interface CodeTestResult {
+  description?: string;
+  passed: boolean;
+  expected: string;
+  actual: string;
 }
 
 /** 单道题目的回答 */
 export interface InterviewAnswer {
   questionId: string;
-  /** 用户文字回答 */
   content: string;
-  /** 答题耗时（秒） */
+  selectedOptionIds?: string[];
+  codeTestResults?: CodeTestResult[];
   duration: number;
-  /** AI 评分 0-100 */
   score: number;
-  /** AI 反馈 */
   feedback: string;
-  /** 改进建议 */
   improvement: string;
+  explanation?: string;
+  isCorrect?: boolean;
 }
 
 /** 面试会话状态 */
@@ -69,15 +100,11 @@ export interface InterviewSession {
   id: string;
   jobTitle: string;
   jobCategory: JobCategory;
-  /** 本次面试的题目列表 */
   questions: InterviewQuestion[];
-  /** 答题记录 */
   answers: Record<string, InterviewAnswer>;
   currentIndex: number;
   status: InterviewStatus;
-  /** 开始时间 */
   startedAt: string;
-  /** 结束时间 */
   finishedAt?: string;
 }
 
@@ -103,4 +130,10 @@ export interface InterviewQuickMode {
   questionCount: number;
   categories: InterviewCategory[];
   icon: string;
+}
+
+/** 答题提交载荷 */
+export interface AnswerSubmitPayload {
+  content: string;
+  selectedOptionIds?: string[];
 }

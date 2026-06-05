@@ -1,4 +1,5 @@
 import { LegalHero } from "@/components/legal/legal-hero";
+import { OFFICIAL_EMAIL } from "@/lib/site-config";
 
 export const metadata = {
   title: "帮助中心 — CareerCraft",
@@ -44,7 +45,7 @@ const faqs = [
   },
   {
     q: "遇到问题如何联系客服？",
-    a: "您可以通过「联系我们」页面提交反馈，或直接发送邮件至 1759486723@qq.com，我们通常在 24 小时内回复。",
+    a: `您可以通过「联系我们」页面提交反馈，或直接发送邮件至 ${OFFICIAL_EMAIL}，我们通常在 24 小时内回复。`,
   },
 ];
 

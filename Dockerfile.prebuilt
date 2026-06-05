@@ -1,0 +1,19 @@
+# Minimal Dockerfile - uses pre-built Next.js standalone output
+# No npm install, no next build - just copy and run
+
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+
+# Copy pre-built standalone output (includes bundled server + node_modules)
+COPY . .
+
+RUN mkdir -p /data && chown node:node /data
+
+EXPOSE 3000
+USER node
+CMD ["node", "server.js"]

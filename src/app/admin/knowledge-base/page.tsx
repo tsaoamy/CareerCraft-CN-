@@ -5,16 +5,16 @@ import { motion } from 'framer-motion';
 import { BookOpen, Play, FileText, TrendingUp, Lightbulb, ExternalLink, Sparkles } from 'lucide-react';
 import { AdminSkeleton } from '@/components/admin/skeleton';
 import type { KnowledgeRecommendation } from '@/lib/ai/types';
+import { apiFetch } from '@/lib/api-client';
 
 export default function KnowledgeBasePage() {
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<KnowledgeRecommendation[]>([]);
 
   useEffect(() => {
-    fetch('/api/ai/analytics?type=knowledge')
-      .then((r) => r.json())
+    apiFetch<{ recommendations: KnowledgeRecommendation[] }>('/api/ai/analytics?type=knowledge')
       .then((res) => {
-        if (res.success) setRecommendations(res.data.recommendations);
+        if (res.success && res.data) setRecommendations(res.data.recommendations);
       })
       .finally(() => setLoading(false));
   }, []);

@@ -17,15 +17,11 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await smartChat(body);
-
-    if (!result.success) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : '服务器错误';
     return NextResponse.json(
-      { success: false, error: error.message || '服务器错误' },
+      { success: false, error: message },
       { status: 500 }
     );
   }

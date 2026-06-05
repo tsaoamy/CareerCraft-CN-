@@ -2,242 +2,201 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle,
-  Sparkles, Github, MessageCircle, Shield
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+import { Smartphone, Eye, EyeOff, Lock, ScanLine, UserIcon } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { QrCodePlatform } from "@/components/qr-code-platform";
+import {
+  AuthCampaignLayout, AuthPanel, AuthTabs, AuthErrorBanner,
+} from "@/components/system/auth-layout";
+import { SystemInput } from "@/components/system/system-input";
+import { BrandButton } from "@/components/design-system/brand-button";
+
+type TabType = "username" | "phone" | "wechat" | "qq";
+
+const tabs: { key: TabType; label: string }[] = [
+  { key: "username", label: "用户名" },
+  { key: "phone", label: "手机号" },
+  { key: "wechat", label: "微信" },
+  { key: "qq", label: "QQ" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
-  const [showPwd, setShowPwd] = useState(false);
-  const [email, setEmail] = useState("");
+  const { login, loginByPhone, loginByWechat, loginByQQ, isAuthenticated } = useAuth();
+  const [tab, setTab] = useState<TabType>("username");
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [scanState, setScanState] = useState<"waiting" | "scanned" | "confirmed">("waiting");
+  const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     if (isAuthenticated) router.replace("/dashboard");
   }, [isAuthenticated, router]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const switchTab = (t: TabType) => {
+    setTab(t); setError(""); setUsername(""); setPhone(""); setPassword(""); setScanState("waiting");
+  };
+
+  // ── 用户名登录 ──
+  const handleUsernameLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!email.trim() || !password) {
-      setError("请填写邮箱和密码");
+    if (!username.trim() || !password) {
+      setError("请输入用户名和密码");
       return;
     }
     setLoading(true);
-    const result = await login(email, password);
+    console.info("[login] 开始用户名登录:", { username: username.trim() });
+    const result = await login(username.trim(), password);
     if (result.success) {
+      console.info("[login] ✅ 登录成功，跳转 dashboard");
       router.push("/dashboard");
     } else {
-      setError(result.error || "邮箱或密码错误，请重试");
+      console.error("[login] ❌ 登录失败:", result.error);
+      setError(result.error || "登录失败，请重试");
     }
     setLoading(false);
   };
 
+  // ── 手机号登录 ──
+  const handlePhoneLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!phone.trim() || !password) {
+      setError("请输入手机号和密码");
+      return;
+    }
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      setError("请输入正确的手机号");
+      return;
+    }
+    setLoading(true);
+    console.info("[login] 开始手机号登录:", { phone: phone.slice(0, 3) + '****' + phone.slice(-4) });
+    const result = await loginByPhone(phone, password);
+    if (result.success) {
+      console.info("[login] ✅ 手机号登录成功，跳转 dashboard");
+      router.push("/dashboard");
+    } else {
+      console.error("[login] ❌ 手机号登录失败:", result.error);
+      setError(result.error || "登录失败，请重试");
+    }
+    setLoading(false);
+  };
+
+  const simulateQrScan = useCallback(async (provider: "wechat" | "qq") => {
+    setError("");
+    setScanState("scanned");
+    await new Promise((r) => setTimeout(r, 800));
+    setScanState("confirmed");
+    await new Promise((r) => setTimeout(r, 400));
+    setLoading(true);
+    const openid = `${provider}_demo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const result = provider === "wechat" ? await loginByWechat(openid) : await loginByQQ(openid);
+    if (result.success) router.push("/dashboard");
+    else { setError(result.error || "登录失败，请重试"); setScanState("waiting"); }
+    setLoading(false);
+  }, [loginByWechat, loginByQQ, router]);
+
   return (
-    <div className="min-h-[calc(100vh-52px)] flex items-center justify-center px-5 py-10 relative overflow-hidden">
-      {/* ===== Layered decorative background ===== */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Large gradient orbs */}
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-[#0071e3]/10 to-[#5ac8fa]/5 blur-[140px] animate-float-slow" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-tl from-[#8944ab]/10 to-[#bf5af2]/5 blur-[120px] animate-float-slow" style={{ animationDelay: "-4s" }} />
-        <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full bg-gradient-to-br from-[#34c759]/5 to-transparent blur-[100px]" />
-
-        {/* Floating decorative shapes */}
-        <div className="absolute top-[15%] left-[10%] w-3 h-3 rounded-full bg-[#0071e3]/20 animate-float-slow" style={{ animationDelay: "0s" }} />
-        <div className="absolute top-[20%] right-[15%] w-2.5 h-2.5 rounded-full bg-[#8944ab]/20 animate-float-slow" style={{ animationDelay: "-2s" }} />
-        <div className="absolute bottom-[25%] left-[20%] w-2 h-2 rounded-full bg-[#ff9f0a]/20 animate-float-slow" style={{ animationDelay: "-5s" }} />
-        <div className="absolute top-[40%] right-[8%] w-3.5 h-3.5 rounded-full bg-[#5ac8fa]/15 animate-float-slow" style={{ animationDelay: "-3s" }} />
-        <div className="absolute bottom-[35%] right-[25%] w-2 h-2 rounded bg-[#bf5af2]/15 animate-spin-slow" />
-        <div className="absolute top-[60%] left-[8%] w-4 h-4 rounded-full border-2 border-[#0071e3]/10 animate-spin-slow" style={{ animationDuration: "25s" }} />
-
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 grid-pattern opacity-30" />
-      </div>
-
-      {/* ===== Main content ===== */}
-      <div className={`w-full max-w-[440px] relative transition-all duration-800 ${
-        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-      }`}>
-        {/* Back link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-[14px] text-apple-text-secondary hover:text-[#0071e3] dark:hover:text-[#0a84ff] mb-8 transition-colors group"
-        >
-          <ArrowLeft className="w-[16px] h-[16px] group-hover:-translate-x-1 transition-transform duration-200" />
-          返回首页
-        </Link>
-
-        {/* Header with animated icon */}
-        <div className="text-center mb-8">
-          <div className="relative inline-flex mb-5">
-            <div className="absolute inset-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0071e3] to-[#5ac8fa] opacity-20 blur-xl animate-float-slow" />
-            <div className="relative w-16 h-16 rounded-2xl bg-white dark:bg-[#1c1c1e] shadow-sm border border-[#d2d2d7]/30 dark:border-[#38383a]/50 flex items-center justify-center group">
-              <Sparkles className="w-8 h-8 text-[#0071e3] group-hover:scale-110 transition-transform duration-300" />
-            </div>
-          </div>
-          <h1 className="text-[30px] font-bold tracking-tight text-apple-text dark:text-white mb-2.5">
-            欢迎回来
-          </h1>
-          <p className="text-[15px] text-apple-text-secondary leading-relaxed">
-            登录后继续管理你的职业档案
+    <AuthCampaignLayout
+      headline="WELCOME" headlineAccent="BACK"
+      slogan="登录职航，继续你的 AI 求职旅程。精准匹配 · 策略投递 · 全链路智能辅助。"
+    >
+      <AuthPanel
+        title="欢迎回来"
+        subtitle="选择登录方式进入产品系统"
+        footer={
+          <p className="text-caption-md text-stone text-center">
+            还没有账号？
+            <Link href="/register" className="text-volt hover:underline ml-1 font-medium">立即注册</Link>
+            <span className="mx-2 text-mute">·</span>
+            <Link href="/forgot-password" className="text-stone hover:text-white transition-colors">忘记密码</Link>
           </p>
-        </div>
+        }
+      >
+        <AuthTabs tabs={tabs} active={tab} onChange={switchTab} />
+        {error && <AuthErrorBanner message={error} />}
 
-        {/* Card with inner glow */}
-        <div className="relative">
-          <div className="absolute -inset-[1px] rounded-[22px] bg-gradient-to-br from-[#0071e3]/20 via-[#5ac8fa]/10 to-[#8944ab]/20 opacity-60 blur-sm" />
-          <div className="relative apple-card p-8">
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* Error alert */}
-              {error && (
-                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#ffebee] dark:bg-[#3d1111] border border-[#ff375f]/20 animate-scale-in">
-                  <AlertCircle className="w-[17px] h-[17px] text-[#ff375f] shrink-0" />
-                  <span className="text-[13px] text-[#ff375f]">{error}</span>
-                </div>
-              )}
+        {/* ── 用户名登录 ── */}
+        {tab === "username" && (
+          <form onSubmit={handleUsernameLogin} className="space-y-5">
+            <SystemInput
+              label="用户名"
+              type="text"
+              placeholder="输入用户名"
+              icon={<UserIcon className="w-4 h-4" />}
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setError(""); }}
+              state={loading ? "loading" : "default"}
+            />
+            <SystemInput
+              label="密码"
+              type={showPwd ? "text" : "password"}
+              placeholder="输入密码"
+              icon={<Lock className="w-4 h-4" />}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              suffix={
+                <button type="button" onClick={() => setShowPwd(!showPwd)} className="text-mute hover:text-white transition-colors" tabIndex={-1}>
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              }
+            />
+            <BrandButton type="submit" variant="volt" size="lg" className="w-full" disabled={loading}>
+              {loading ? "登录中..." : "登录"}
+            </BrandButton>
+          </form>
+        )}
 
-              {/* Email field */}
-              <div className="space-y-2">
-                <label className="text-[13px] font-medium text-apple-text dark:text-white">
-                  邮箱
-                </label>
-                <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-[17px] h-[17px] text-apple-text-secondary group-focus-within:text-[#0071e3] transition-colors duration-200 z-10" />
-                  <Input
-                    type="text"
-                    placeholder="your@email.com"
-                    className="pl-11 h-[46px] rounded-xl text-[14px] transition-all duration-200 focus:shadow-[0_0_0_3px_rgba(0,113,227,0.1)]"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
+        {/* ── 手机号登录 ── */}
+        {tab === "phone" && (
+          <form onSubmit={handlePhoneLogin} className="space-y-5">
+            <SystemInput
+              label="手机号" type="tel" placeholder="输入手机号"
+              icon={<Smartphone className="w-4 h-4" />}
+              value={phone} onChange={(e) => { setPhone(e.target.value); setError(""); }}
+              maxLength={11} state={loading ? "loading" : "default"}
+            />
+            <SystemInput
+              label="密码" type={showPwd ? "text" : "password"} placeholder="输入密码"
+              icon={<Lock className="w-4 h-4" />} value={password} onChange={(e) => setPassword(e.target.value)}
+              suffix={
+                <button type="button" onClick={() => setShowPwd(!showPwd)} className="text-mute hover:text-white transition-colors" tabIndex={-1}>
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              }
+            />
+            <BrandButton type="submit" variant="volt" size="lg" className="w-full" disabled={loading}>
+              {loading ? "登录中..." : "登录"}
+            </BrandButton>
+          </form>
+        )}
 
-              {/* Password field */}
-              <div className="space-y-2">
-                <label className="text-[13px] font-medium text-apple-text dark:text-white">
-                  密码
-                </label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-[17px] h-[17px] text-apple-text-secondary group-focus-within:text-[#0071e3] transition-colors duration-200 z-10" />
-                  <Input
-                    type={showPwd ? "text" : "password"}
-                    placeholder="输入密码"
-                    className="pl-11 pr-11 h-[46px] rounded-xl text-[14px] transition-all duration-200 focus:shadow-[0_0_0_3px_rgba(0,113,227,0.1)]"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPwd(!showPwd)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-apple-text-secondary hover:text-apple-text dark:hover:text-white transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPwd ? <EyeOff className="w-[17px] h-[17px]" /> : <Eye className="w-[17px] h-[17px]" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember me + Forgot password */}
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                    className="apple-toggle scale-[0.65] origin-left"
-                  />
-                  <span className="text-[13px] text-apple-text-secondary group-hover:text-apple-text dark:group-hover:text-white transition-colors">
-                    记住我
-                  </span>
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-[13px] text-[#0071e3] dark:text-[#0a84ff] hover:underline transition-all"
-                >
-                  忘记密码？
-                </Link>
-              </div>
-
-              {/* Submit button */}
-              <Button
-                className="w-full h-[48px] rounded-xl text-[15px] font-semibold bg-gradient-to-r from-[#0071e3] to-[#5ac8fa] hover:shadow-[0_6px_24px_rgba(0,113,227,0.35)] transition-all duration-300 active:scale-[0.98]"
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2.5">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    登录中...
-                  </span>
-                ) : (
-                  "登录"
-                )}
-              </Button>
-
-              {/* Divider */}
-              <div className="relative my-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#d2d2d7]/40 dark:border-[#38383a]/60" />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="px-3 text-[12px] text-apple-text-secondary bg-white dark:bg-[#1c1c1e]">
-                    或通过以下方式登录
-                  </span>
-                </div>
-              </div>
-
-              {/* Social login buttons */}
-              <div className="grid grid-cols-3 gap-2.5">
-                {[
-                  { icon: Github, label: "GitHub", color: "hover:bg-[#24292e]/10 dark:hover:bg-[#24292e]/30" },
-                  { icon: MessageCircle, label: "微信", color: "hover:bg-[#07c160]/10 dark:hover:bg-[#07c160]/20" },
-                  { icon: Shield, label: "SSO", color: "hover:bg-[#0071e3]/10 dark:hover:bg-[#0071e3]/20" },
-                ].map(({ icon: Icon, label, color }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[#d2d2d7]/30 dark:border-[#38383a]/50 text-[13px] text-apple-text-secondary transition-all duration-200 ${color}`}
-                  >
-                    <Icon className="w-[17px] h-[17px]" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Register link */}
-              <p className="text-center text-[13px] text-apple-text-secondary pt-1">
-                还没有账号？{" "}
-                <Link
-                  href="/register"
-                  className="text-[#0071e3] dark:text-[#0a84ff] hover:text-[#0077ed] font-medium transition-colors hover:underline"
-                >
-                  立即注册
-                </Link>
-              </p>
-            </form>
+        {/* ── 微信/QQ 扫码 ── */}
+        {(tab === "wechat" || tab === "qq") && (
+          <div className="space-y-5 text-center">
+            <QrCodePlatform platform={tab} refreshKey={refreshKey} scanState={scanState}
+              onRefresh={() => { setRefreshKey((k) => k + 1); setScanState("waiting"); setError(""); }} />
+            <p className="text-caption-md text-stone">{tab === "wechat" ? "微信扫一扫登录" : "QQ 扫一扫登录"}</p>
+            {scanState === "waiting" && (
+              <BrandButton variant="outline-dark" size="md" className="w-full" onClick={() => simulateQrScan(tab)} disabled={loading}>
+                <ScanLine className="w-4 h-4" /> 模拟扫码成功
+              </BrandButton>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Footer note */}
-        <p className="text-center text-[11px] text-apple-text-secondary/60 mt-6">
-          登录即表示同意{" "}
-          <Link href="/terms" className="underline hover:text-apple-text dark:hover:text-white transition-colors">服务条款</Link>
-          {" "}和{" "}
-          <Link href="/privacy" className="underline hover:text-apple-text dark:hover:text-white transition-colors">隐私政策</Link>
+        <p className="text-center text-[11px] text-mute mt-8">
+          登录即表示同意
+          <Link href="/terms" className="underline hover:text-stone mx-1">服务条款</Link>和
+          <Link href="/privacy" className="underline hover:text-stone ml-1">隐私政策</Link>
         </p>
-      </div>
-    </div>
+      </AuthPanel>
+    </AuthCampaignLayout>
   );
 }

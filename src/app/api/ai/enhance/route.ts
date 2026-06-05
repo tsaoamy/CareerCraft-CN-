@@ -24,10 +24,10 @@ export async function POST(request: NextRequest) {
         context: { projectExperience: projectDescription },
         mode: 'enhance',
       });
-      return NextResponse.json(mockResult);
+      return NextResponse.json({ ...mockResult, meta: { source: 'offline' as const } });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, meta: { source: 'ai' as const } });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || '分析失败' },

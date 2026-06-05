@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, GitBranch, Target, Sparkles, Clock, Award, BookOpen, ChevronRight } from 'lucide-react';
 import { AdminSkeleton } from '@/components/admin/skeleton';
 import type { UserGrowthData, GrowthStage } from '@/lib/ai/types';
+import { apiFetch } from '@/lib/api-client';
 
 const stageIcons: Record<string, React.ReactNode> = {
   '注册': <BookOpen className="w-4 h-4" />,
@@ -45,10 +46,9 @@ export default function UserGrowthPage() {
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/ai/analytics?type=growth')
-      .then((r) => r.json())
+    apiFetch<{ users: UserGrowthData[] }>('/api/ai/analytics?type=growth')
       .then((res) => {
-        if (res.success) setUsers(res.data.users);
+        if (res.success && res.data) setUsers(res.data.users);
       })
       .finally(() => setLoading(false));
   }, []);
